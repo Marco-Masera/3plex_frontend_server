@@ -1,0 +1,9 @@
+Django==4.1.1
+django-allauth==0.51.0
+djangorestframework
+django-su==1.0.0
+pytz
+whitenoise
+mysqlclient==2.1.1
+gunicorn==19.9.0
+openpyxl
