@@ -1,5 +1,6 @@
 from token_queue_mng.models import *
 from django.core.exceptions import ObjectDoesNotExist
+from triplex_frontend.triplex_exceptions import TokenDoesNotExistException
 from typing import Optional
 
 class TokenQueueService:
@@ -10,7 +11,7 @@ class TokenQueueService:
         try:
             return Token.objects.get(token=token)
         except ObjectDoesNotExist:
-            return None
+            raise TokenDoesNotExistException()
     
     def set_token_expired(token: int) -> bool:
         return TokenQueueService.__set_token_state__(token, Token.TokenState.EXPIRED) 

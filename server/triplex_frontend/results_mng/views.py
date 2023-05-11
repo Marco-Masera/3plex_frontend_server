@@ -5,12 +5,10 @@ from rest_framework import permissions
 from django.core.serializers import serialize
 from django.forms.models import model_to_dict
 from triplex_frontend.responses import Responses
-from triplex.services import TriplexService
 import json
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from rest_framework import parsers
 from triplex_frontend.triplex_exceptions import *
-from token_queue_mng.services import TokenQueueService
 from results_mng.services import ResultsMngServices
 
 
@@ -26,12 +24,12 @@ class SubmitResult(APIView):
         try:
             stability = request.data[STABILITY]
             summary = request.data[SUMMARY]
+            if (stability is None or summary is None):
+                raise Exception
+            if (stability.size == 0 or summary.size == 0):
+                raise Exception
+
+            ResultsMngServices.post_data(token, stability, summary)
         except Exception:
             return Responses.generic_failure("Did not receive input files")
-        
-        print(stability)
-        #TO DO:
-        #Retrieve token from DB, update it
-        #Store data somewhere
-        #Eventually send confirmation email
         return Responses.success({"ok": "ok"})

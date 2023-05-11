@@ -42,8 +42,8 @@ class SubmitjobController(APIView):
                 
             triplex_params = TriplexService.parse_3plex_params(request.data)
             token = TokenQueueService.get_new_token().token
-            ResultsMngServices.initialize_data_section(token, ssRNA_fasta, request.data[SSRNA_ID] if SSRNA_ID in request.data else None )
             TriplexService.submit_job(ssRNA_fasta, dsDNA_fasta, token, triplex_params)
+            ResultsMngServices.initialize_data_section(token, ssRNA_fasta, request.data[SSRNA_ID] if SSRNA_ID in request.data else None )
             return Responses.success({"token": token})
         except TriplexException as e:
             if (token is not None):
