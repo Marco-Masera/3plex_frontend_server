@@ -1,4 +1,4 @@
-from token_queue.models import *
+from token_queue_mng.models import *
 from django.core.exceptions import ObjectDoesNotExist
 from typing import Optional
 
@@ -27,7 +27,7 @@ class TokenQueueService:
     def __set_token_state__(token: int, state: Token.TokenState) -> bool:
         try:
             token = Token.objects.get(token=token)
-            token._token_state_ = state 
+            token._token_state = state 
             token.save()
             return True
         except ObjectDoesNotExist:
