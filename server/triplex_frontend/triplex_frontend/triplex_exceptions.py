@@ -20,3 +20,7 @@ class DsDnaNotProvidedException(TriplexException):
         return Responses.generic_failure(
             message="You need to provide either a dsDNA fasta file as 'DSDNA_FASTA' or a bed file as 'DSDNA_COORD_BED'",
             errorCode= status.HTTP_400_BAD_REQUEST)
+
+class CannotSubmitToBackendException(TriplexException):
+    def handle(self):
+        return Responses.generic_failure(message="Cannot submit job right now - backend server unavailable.")

@@ -4,7 +4,7 @@ from typing import Optional
 
 class TokenQueueService:
     def get_new_token() -> Token:
-        return Token.create() 
+        return Token.objects.create() 
 
     def find_token(token: int) -> Optional[Token]:
         try:
