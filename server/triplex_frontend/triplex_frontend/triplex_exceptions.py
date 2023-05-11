@@ -24,3 +24,16 @@ class DsDnaNotProvidedException(TriplexException):
 class CannotSubmitToBackendException(TriplexException):
     def handle(self):
         return Responses.generic_failure(message="Cannot submit job right now - backend server unavailable.")
+
+class DataDoesNotExistException(TriplexException):
+    def handle(self):
+        return Responses.generic_failure(
+            message="The requested data does not exist in the system",
+            errorCode= status.HTTP_404_NOT_FOUND)
+
+class TokenDoesNotExistException(TriplexException):
+    def handle(self):
+        return Responses.generic_failure(
+            message="The requested token does not exist in the system",
+            errorCode= status.HTTP_404_NOT_FOUND)
+            
