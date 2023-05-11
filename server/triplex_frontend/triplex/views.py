@@ -10,7 +10,7 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 from rest_framework import parsers
 from triplex_frontend.triplex_exceptions import *
 from token_queue_mng.services import TokenQueueService
-from results_mng import ResultsMngServices
+from results_mng.services import ResultsMngServices
 
 #Input body as key-value form-data with keys:
 SSRNA_FASTA = "SSRNA_FASTA" #Fasta file as ssRNA input
@@ -39,11 +39,12 @@ class SubmitjobController(APIView):
                 raise ModuleNotImplementedYetException()
             else:
                 raise DsDnaNotProvidedException()
-
+                
+            triplex_params = TriplexService.parse_3plex_params(request.data)
             token = TokenQueueService.get_new_token().token
             ResultsMngServices.initialize_data_section(token, ssRNA_fasta, request.data[SSRNA_ID] if SSRNA_ID in request.data else None )
-            TriplexService.submit_job(ssRNA_fasta, dsDNA_fasta, token)
-
+            TriplexService.submit_job(ssRNA_fasta, dsDNA_fasta, token, triplex_params)
+            return Responses.success({"token": token})
         except TriplexException as e:
             if (token is not None):
                 TokenQueueService.remove_token(token)

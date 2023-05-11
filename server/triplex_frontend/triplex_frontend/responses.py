@@ -24,5 +24,5 @@ class Responses:
 
     def generic_failure(message: str = "Internal server error", errorCode: status = status.HTTP_500_INTERNAL_SERVER_ERROR):
         data = json.dumps({ 'success': False, 'error': message }, cls=ExtendedEncoder)
-        return Response(data, status=status)
+        return Response(data, status=errorCode)
     
