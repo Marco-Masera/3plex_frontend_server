@@ -39,7 +39,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'triplex',
-    'token_queue_mng'
+    'token_queue_mng',
+    'results_mng'
 ]
 
 MIDDLEWARE = [
