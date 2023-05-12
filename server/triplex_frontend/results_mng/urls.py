@@ -4,4 +4,5 @@ from .views import *
 
 urlpatterns = [
     path('submitresult/<str:token>/', SubmitResult.as_view()),
+    path('submiterror/<str:token>/', SubmitError.as_view())
 ]

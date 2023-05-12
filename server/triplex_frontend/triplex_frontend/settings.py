@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 """
 
 from pathlib import Path
-
+from os import path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -28,9 +28,14 @@ SECRET_KEY = 'django-insecure-&0o*(s9@=kl=)_*+^^#g4(d-aynnwwyci(642zg52lqi7y4#zv
 DEBUG = True
 
 ALLOWED_HOSTS = ["192.168.186.10"]
+MEDIA_ROOT = path.join(BASE_DIR, '../media_root')
+MEDIA_URL = "3plex/results/"
 
-
+#App global variables
+RUN_CLEANUP_EVERY_HOURS = 12
+CLEANUP_AFTER_HOURS = 168
 # Application definition
+
 
 INSTALLED_APPS = [
     'django.contrib.admin',

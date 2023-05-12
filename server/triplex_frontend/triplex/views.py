@@ -48,13 +48,17 @@ class SubmitjobController(APIView):
         except TriplexException as e:
             if (token is not None):
                 TokenQueueService.remove_token(token)
-                ResultsMngServices.delete_data_by_token(token)
+                try:
+                    ResultsMngServices.delete_data_by_token(token)
+                except Exception:
+                    pass
             return e.handle()
 
 class CheckjobController(APIView):
     def get(self, request, *args, **kwargs):
         try:
             token = kwargs.get("token")
-
+            data = ResultsMngServices.get_data_by_token(token)
+            return Responses.success({"resources": data})
         except TriplexException as e:
-            return TriplexExceptionHandler.handle(e)
+            return e.handle()
