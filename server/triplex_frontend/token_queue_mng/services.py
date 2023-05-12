@@ -7,28 +7,34 @@ class TokenQueueService:
     def get_new_token() -> Token:
         return Token.objects.create() 
 
-    def find_token(token: int) -> Optional[Token]:
+    def find_token(token: str) -> Optional[Token]:
         try:
             return Token.objects.get(token=token)
         except ObjectDoesNotExist:
             raise TokenDoesNotExistException()
     
-    def set_token_expired(token: int) -> bool:
+    def token_is_state_submitted(token):
+        return token.state == Token.TokenState.SUBMITTED
+    
+    def set_token_expired(token: str) -> bool:
         return TokenQueueService.__set_token_state__(token, Token.TokenState.EXPIRED) 
     
-    def set_token_cancelled(token: int) -> bool:
+    def set_token_ready(token: str) -> bool:
+        return TokenQueueService.__set_token_state__(token, Token.TokenState.READY) 
+    
+    def set_token_cancelled(token: str) -> bool:
         return TokenQueueService.__set_token_state__(token, Token.TokenState.CANCELLED) 
     
-    def set_token_failed(token: int) -> bool:
+    def set_token_failed(token: str) -> bool:
         return TokenQueueService.__set_token_state__(token, Token.TokenState.FAILED) 
     
-    def remove_token(token: int):
+    def remove_token(token: str):
         Token.objects.filter(token=token).delete()
     
-    def __set_token_state__(token: int, state: Token.TokenState) -> bool:
+    def __set_token_state__(token: str, state: Token.TokenState) -> bool:
         try:
             token = Token.objects.get(token=token)
-            token._token_state = state 
+            token._token_state = state
             token.save()
             return True
         except ObjectDoesNotExist:

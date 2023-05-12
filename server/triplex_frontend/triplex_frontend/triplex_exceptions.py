@@ -36,4 +36,35 @@ class TokenDoesNotExistException(TriplexException):
         return Responses.generic_failure(
             message="The requested token does not exist in the system",
             errorCode= status.HTTP_404_NOT_FOUND)
+
+class DidNotReceiveInputFilesException(TriplexException):
+    def handle(self):
+        return Responses.generic_failure(
+            message="Did not receive expected input files",
+            errorCode= status.HTTP_400_BAD_REQUEST)
+
+class TokenIsNotStateSubmittedException(TriplexException):
+    def handle(self):
+        return Responses.generic_failure(
+            message="The requested token is in the system but not in state Submitted; cannot accept incoming data")
             
+class DataNotReadyYetException(TriplexException):
+    def handle(self):
+        return Responses.generic_failure(
+            message="Job is not completed yet",
+            errorCode= status.HTTP_307_TEMPORARY_REDIRECT)
+class DataExpiredException(TriplexException):
+    def handle(self):
+        return Responses.generic_failure(
+            message="Job data expired and is not available anymore",
+            errorCode= status.HTTP_410_GONE)
+class JobCancelledException(TriplexException):
+    def handle(self):
+        return Responses.generic_failure(
+            message="Job was cancelled",
+            errorCode= status.HTTP_410_GONE)
+class JobFailedException(TriplexException):
+    def handle(self):
+        return Responses.generic_failure(
+            message="Job failed",
+            errorCode= status.HTTP_410_GONE)
