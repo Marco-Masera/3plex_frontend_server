@@ -20,6 +20,7 @@ DSDNA_COORD_BED = "DSDNA_COORD_BED" #Bed file with coordinates
 
 class SubmitjobController(APIView):
     parser_classes = [parsers.MultiPartParser] 
+
     def post(self, request, *args, **kwargs):
         token = None
         try:
@@ -39,11 +40,15 @@ class SubmitjobController(APIView):
                 raise ModuleNotImplementedYetException()
             else:
                 raise DsDnaNotProvidedException()
-                
+
+            #Format triplex_params
             triplex_params = TriplexService.parse_3plex_params(request.data)
+            #Get new token
             token = TokenQueueService.get_new_token().token
+            #Submit job to backend server
             TriplexService.submit_job(ssRNA_fasta, dsDNA_fasta, token, triplex_params)
-            ResultsMngServices.initialize_data_section(token, ssRNA_fasta, request.data[SSRNA_ID] if SSRNA_ID in request.data else None )
+            #Initialize data section to receive results
+            ResultsMngServices.initialize_data_section(token, ssRNA_fasta, ssDNA_fasta, triplex_params, request.data[SSRNA_ID] if SSRNA_ID in request.data else None )
             return Responses.success({"token": token})
         except TriplexException as e:
             if (token is not None):
@@ -59,6 +64,7 @@ class CheckjobController(APIView):
         try:
             token = kwargs.get("token")
             data = ResultsMngServices.get_data_by_token(token)
-            return Responses.success({"resources": data})
+            ResultsMngServices.update_data_last_date(token)
+            return Responses.success(data)
         except TriplexException as e:
             return e.handle()

@@ -4,15 +4,19 @@ from triplex_frontend.triplex_exceptions import TokenDoesNotExistException
 from typing import Optional
 
 class TokenQueueService:
+    
     def get_new_token() -> Token:
         return Token.objects.create() 
 
-    def find_token(token: str) -> Optional[Token]:
+    def find_token(token: str) -> Token:
         try:
             return Token.objects.get(token=token)
         except ObjectDoesNotExist:
             raise TokenDoesNotExistException()
     
+    def assert_token_ready(token: str):
+        TokenQueueService.find_token(token).assert_state_ready()
+
     def token_is_state_submitted(token):
         return token.state == Token.TokenState.SUBMITTED
     
