@@ -58,6 +58,7 @@ class DataExpiredException(TriplexException):
         return Responses.generic_failure(
             message="Job data expired and is not available anymore",
             errorCode= status.HTTP_410_GONE)
+            
 class JobCancelledException(TriplexException):
     def handle(self):
         return Responses.generic_failure(

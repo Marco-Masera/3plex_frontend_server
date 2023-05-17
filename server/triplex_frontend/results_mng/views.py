@@ -29,7 +29,7 @@ class SubmitResult(APIView):
             if (stability.size == 0 or summary.size == 0):
                 raise DidNotReceiveInputFilesException()
 
-            ResultsMngServices.post_data(token, stability, summary)
+            ResultsMngServices.save_data(token, stability, summary)
             TokenQueueService.set_token_ready(token)
         except TriplexException as e:
             return e.handle()

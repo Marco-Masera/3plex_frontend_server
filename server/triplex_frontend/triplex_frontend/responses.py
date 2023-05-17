@@ -13,7 +13,6 @@ class ExtendedEncoder(DjangoJSONEncoder):
             return model_to_dict(o)
         return super().default(o)
 
-
 class Responses:
     def success(payload):
         data = json.dumps({ 'success': True, 'payload': payload }, cls=ExtendedEncoder)

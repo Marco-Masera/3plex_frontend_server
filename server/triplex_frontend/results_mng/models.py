@@ -7,21 +7,26 @@ import os
 class JobData(models.Model):
     token = models.ForeignKey(Token, on_delete=models.CASCADE)
     date = models.DateTimeField(auto_now_add=True, auto_now=False)
+    triplex_params = models.JSONField()
     
-    ssRna_id = models.IntegerField(default=None, null=True)
-    ssRna_fasta = models.FileField(default=None, null=True)
+    ssRNA_id = models.IntegerField(default=None, null=True)
+    ssRNA_fasta = models.FileField(default=None, null=True)
+    dsDNA_fasta = models.FileField(default=None, null=True)
     stability = models.FileField(default=None, null=True)
     summary = models.FileField(default=None, null=True)
 
 
 @receiver(models.signals.post_delete, sender=JobData)
 def auto_delete_file_on_delete(sender, instance, **kwargs):
-    if instance.ssRna_id:
-        if os.path.isfile(instance.ssRna_id.path):
-            os.remove(instance.ssRna_id.path)
-    if instance.ssRna_fasta:
-        if os.path.isfile(instance.ssRna_fasta.path):
-            os.remove(instance.ssRna_fasta.path)
+    if instance.ssRNA_id:
+        if os.path.isfile(instance.ssRNA_id.path):
+            os.remove(instance.ssRNA_id.path)
+    if instance.ssRNA_fasta:
+        if os.path.isfile(instance.ssRNA_fasta.path):
+            os.remove(instance.ssRNA_fasta.path)
+    if instance.dsDNA_fasta:
+        if os.path.isfile(instance.dsDNA_fasta.path):
+            os.remove(instance.dsDNA_fasta.path)
     if instance.stability:
         if os.path.isfile(instance.stability.path):
             os.remove(instance.stability.path)
