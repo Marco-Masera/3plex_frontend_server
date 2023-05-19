@@ -4,6 +4,7 @@ from django.http import JsonResponse
 from django.forms import model_to_dict
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models import Model
+from django.db.models.query import QuerySet
 import json
 
 
@@ -17,6 +18,8 @@ class ExtendedEncoder(DjangoJSONEncoder):
                 return o.to_dict()
             #Otherwise use standard model_to_dict
             return model_to_dict(o)
+        if (isinstance(o, QuerySet)):
+            return [self.default(item) for item in o]
         return super().default(o)
 
 class Responses:

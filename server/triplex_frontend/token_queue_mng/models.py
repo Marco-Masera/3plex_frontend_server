@@ -28,8 +28,9 @@ class Token(models.Model):
 
     def to_dict(self):
         dict_ = model_to_dict(self)
-        dict_.pop(_token_state)
-        dict_["state"] = self.state()
+        dict_.pop("_token_state")
+        dict_["state"] = self.state
+        dict_["token"] = self.token
         return dict_
 
     def assert_state_ready(self):
@@ -43,6 +44,9 @@ class Token(models.Model):
             raise JobCancelledException()
         if (self.state == Token.TokenState.FAILED):
             raise JobFailedException()
+
+    def check_state_ready(self):
+        return self.state == Token.TokenState.READY
     
     def save(self, *args, **kwargs):
         if not self.token:

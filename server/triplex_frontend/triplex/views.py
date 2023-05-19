@@ -45,7 +45,7 @@ class SubmitjobController(APIView):
                 raise DsDnaNotProvidedException()
             #Check extra field
             if (EMAIL_FIELD in request.data):
-                email = EMAIL_FIELD 
+                email = request.data[EMAIL_FIELD]
             else: 
                 email = None
             if (NAME_FIELD in request.data): 
@@ -59,7 +59,7 @@ class SubmitjobController(APIView):
             #Submit job to backend server
             TriplexService.submit_job(ssRNA_fasta, dsDNA_fasta, token, triplex_params)
             #Initialize data section to receive results
-            ResultsMngServices.initialize_data_section(token, ssRNA_fasta, ssDNA_fasta, triplex_params, request.data[SSRNA_ID] if SSRNA_ID in request.data else None )
+            ResultsMngServices.initialize_data_section(token, ssRNA_fasta, dsDNA_fasta, triplex_params, request.data[SSRNA_ID] if SSRNA_ID in request.data else None )
             return Responses.success({"token": token})
         except TriplexException as e:
             if (token is not None):
@@ -74,16 +74,20 @@ class CheckjobController(APIView):
     def get(self, request, *args, **kwargs):
         try:
             token = kwargs.get("token")
-            data = ResultsMngServices.get_data_by_token(token)
-            ResultsMngServices.update_data_last_date(token)
-            return Responses.success({"job": token, "available": data})
+            token_object = TokenQueueService.find_token(token)
+            if (token_object.check_state_ready()):
+                data = ResultsMngServices.get_data_by_token(token)
+                ResultsMngServices.update_data_last_date(token)
+            else:
+                data = dict()
+            return Responses.success({"job": token_object, "results": data})
         except TriplexException as e:
             return e.handle()
 
 class CheckjobsByEmailController(APIView):
     def get(self, request, *args, **kwargs):
         try:
-            email = kwargs.get("token")
+            email = kwargs.get("email")
             tokens = TokenQueueService.get_tokens_by_email(email)
             return Responses.success(tokens)
         except TriplexException as e:
