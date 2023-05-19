@@ -16,7 +16,7 @@ class ResultsMngServices:
     def delete_data_by_token(token: str):
         ResultsMngServices.get_by_token(token).delete() 
 
-    def initialize_data_section(token: str, ssRNA_fasta, ssDNA_fasta, triplex_params, ssRNA_id = None):
+    def initialize_data_section(token: str, ssRNA_fasta, dsDNA_fasta, triplex_params, ssRNA_id = None):
         #Initialize data section, keep track of sequence and id, used later for computing the conservation
         token_ = TokenQueueService.find_token(token)
         job = JobData()
@@ -24,8 +24,8 @@ class ResultsMngServices:
         job.ssRNA_id = ssRNA_id 
         job.ssRNA_fasta = ssRNA_fasta
         job.ssRNA_fasta.name = f"{token}/ssRNA.fa"
-        job.ssDNA_fasta = ssDNA_fasta
-        job.ssDNA_fasta.name = f"{token}/dsDNA.fa"
+        job.dsDNA_fasta = dsDNA_fasta
+        job.dsDNA_fasta.name = f"{token}/dsDNA.fa"
         job.triplex_params = triplex_params
         job.save()
     
@@ -46,7 +46,7 @@ class ResultsMngServices:
         jobData.save()
     
     def get_data_by_token(token:str):
-        TokenQueueService.assert_state_ready(token)
+        TokenQueueService.assert_token_ready(token)
         data = ResultsMngServices.get_by_token(token)
         #Returns urls of available data
         available = dict()
