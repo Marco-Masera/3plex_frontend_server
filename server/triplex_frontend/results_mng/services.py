@@ -1,10 +1,10 @@
 from .models import JobData
 from triplex_frontend.triplex_exceptions import DataDoesNotExistException, TokenIsNotStateSubmittedException
 from token_queue_mng.services import TokenQueueService
-from token_queue_mng.models import *
 from datetime import datetime
 
 class ResultsMngServices:
+    #Retrieve data from token (string)
     def get_by_token(token: str):
         try:
             return JobData.objects.get(
@@ -12,10 +12,6 @@ class ResultsMngServices:
             )
         except JobData.DoesNotExist:
             raise DataDoesNotExistException()
-
-    def submit_error(token: str):
-        TokenQueueService.set_token_failed(token)  
-        job = ResultsMngServices.get_by_token(token)
 
     def delete_data_by_token(token: str):
         ResultsMngServices.get_by_token(token).delete() 

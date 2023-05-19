@@ -31,6 +31,7 @@ class SubmitResult(APIView):
 
             ResultsMngServices.save_data(token, stability, summary)
             TokenQueueService.set_token_ready(token)
+            
         except TriplexException as e:
             return e.handle()
         return Responses.success({"ok": "ok"})
@@ -39,7 +40,8 @@ class SubmitError(APIView):
     def post(self, request, *args, **kwargs):
         token = kwargs.get("token")
         try:
-            ResultsMngServices.submit_error(token)
+            TokenQueueService.set_token_failed(token)  
+            job = ResultsMngServices.get_by_token(token)
             return Responses.success({"ok": "ok"})
         except TriplexException as e:
             return e.handle()

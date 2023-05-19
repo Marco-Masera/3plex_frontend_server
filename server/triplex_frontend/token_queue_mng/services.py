@@ -5,14 +5,17 @@ from typing import Optional
 
 class TokenQueueService:
     
-    def get_new_token() -> Token:
-        return Token.objects.create() 
+    def get_new_token(name=None, email=None) -> Token:
+        return Token.objects.create(job_name=name, email_address=email) 
 
     def find_token(token: str) -> Token:
         try:
             return Token.objects.get(token=token)
         except ObjectDoesNotExist:
             raise TokenDoesNotExistException()
+
+    def get_tokens_by_email(email):
+        return Token.objects.filter(email_address=email)
     
     def assert_token_ready(token: str):
         TokenQueueService.find_token(token).assert_state_ready()

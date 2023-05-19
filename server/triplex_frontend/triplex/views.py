@@ -17,6 +17,9 @@ SSRNA_FASTA = "SSRNA_FASTA" #Fasta file as ssRNA input
 DSDNA_FASTA = "DSDNA_FASTA" #Fasta file as dsDNA input
 SSRNA_ID = "SSRNA_ID" #Id of the transcript
 DSDNA_COORD_BED = "DSDNA_COORD_BED" #Bed file with coordinates
+#Input for extra params
+NAME_FIELD = "JOBNAME"
+EMAIL_FIELD = "EMAIL"
 
 class SubmitjobController(APIView):
     parser_classes = [parsers.MultiPartParser] 
@@ -40,11 +43,19 @@ class SubmitjobController(APIView):
                 raise ModuleNotImplementedYetException()
             else:
                 raise DsDnaNotProvidedException()
-
+            #Check extra field
+            if (EMAIL_FIELD in request.data):
+                email = EMAIL_FIELD 
+            else: 
+                email = None
+            if (NAME_FIELD in request.data): 
+                jobName = NAME_FIELD; 
+            else:
+                jobName = None
             #Format triplex_params
             triplex_params = TriplexService.parse_3plex_params(request.data)
             #Get new token
-            token = TokenQueueService.get_new_token().token
+            token = TokenQueueService.get_new_token(name=jobName, email=email).token
             #Submit job to backend server
             TriplexService.submit_job(ssRNA_fasta, dsDNA_fasta, token, triplex_params)
             #Initialize data section to receive results
@@ -65,6 +76,15 @@ class CheckjobController(APIView):
             token = kwargs.get("token")
             data = ResultsMngServices.get_data_by_token(token)
             ResultsMngServices.update_data_last_date(token)
-            return Responses.success(data)
+            return Responses.success({"job": token, "available": data})
+        except TriplexException as e:
+            return e.handle()
+
+class CheckjobsByEmailController(APIView):
+    def get(self, request, *args, **kwargs):
+        try:
+            email = kwargs.get("token")
+            tokens = TokenQueueService.get_tokens_by_email(email)
+            return Responses.success(tokens)
         except TriplexException as e:
             return e.handle()
