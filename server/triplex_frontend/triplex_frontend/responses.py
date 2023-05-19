@@ -9,7 +9,13 @@ import json
 
 class ExtendedEncoder(DjangoJSONEncoder):
     def default(self, o):
+        #If object is a model object
         if isinstance(o, Model):
+            #If it implements custom to_dict method use it
+            to_dict = getattr(o, "to_dict", None)
+            if callable(to_dict):
+                return o.to_dict()
+            #Otherwise use standard model_to_dict
             return model_to_dict(o)
         return super().default(o)
 
