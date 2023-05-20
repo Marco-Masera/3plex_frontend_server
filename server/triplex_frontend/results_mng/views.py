@@ -29,14 +29,14 @@ class SubmitResult(APIView):
             if (stability.size == 0 or summary.size == 0):
                 raise DidNotReceiveInputFilesException()
 
-            ResultsMngServices.save_data(token, stability, summary)
-            TokenQueueService.set_token_ready(token)
+            ResultsMngServices.receive_data(token, stability, summary)
+            ResultsMngServices.update_data_last_date(token)
             
         except TriplexException as e:
-            TokenQueueService.set_token_failed(token)  
+            ResultsMngServices.set_job_failed(token)  
             return e.handle()
         except Exception as e:
-            TokenQueueService.set_token_failed(token)  
+            ResultsMngServices.set_job_failed(token)  
             raise e
         return Responses.success({"ok": "ok"})
     
@@ -44,7 +44,7 @@ class SubmitError(APIView):
     def post(self, request, *args, **kwargs):
         token = kwargs.get("token")
         try:
-            TokenQueueService.set_token_failed(token)  
+            ResultsMngServices.set_job_failed(token)  
             return Responses.success({"ok": "ok"})
         except TriplexException as e:
             return e.handle()
