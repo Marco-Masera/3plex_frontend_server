@@ -1,11 +1,26 @@
 from django.db import models
-from token_queue_mng.models import Token
 from django.dispatch import receiver
 from django.conf import settings
 import os
 
+state_choices = [
+        ("Created", "Created"),
+        ("Submitted","Submitted"),
+        ("Ready", "Ready"),
+        ("Expired", "Expired"),
+        ("Cancelled","Cancelled"),
+        ("Failed","Failed")
+]
+
+
 class JobData(models.Model):
-    token = models.ForeignKey(Token, on_delete=models.CASCADE)
+    #Tells django to index hash_code field for faster lookup
+    class Meta:
+        indexes = [models.Index(fields=['hash_code']),]
+
+    state = models.CharField(max_length=16, choices = state_choices, default = "Created")
+    hash_code = models.CharField(max_length=20)
+
     date = models.DateTimeField(auto_now_add=True, auto_now=False)
     triplex_params = models.JSONField()
     
@@ -15,23 +30,37 @@ class JobData(models.Model):
     stability = models.FileField(default=None, null=True)
     summary = models.FileField(default=None, null=True)
 
+    #Cleaned up keep tracks of the job history, if it was cleaned up after not being accessed for some time
+    cleaned_up = models.BooleanField(default=False)
+
+    def delete_all_files(self):
+        dir_ = None
+        if self.ssRNA_fasta:
+            if os.path.isfile(self.ssRNA_fasta.path):
+                dir_ = self.ssRNA_fasta.path
+                os.remove(self.ssRNA_fasta.path)
+        if self.dsDNA_fasta:
+            if os.path.isfile(self.dsDNA_fasta.path):
+                dir_ = self.dsDNA_fasta.path
+                os.remove(self.dsDNA_fasta.path)
+        if self.stability:
+            if os.path.isfile(self.stability.path):
+                dir_ = self.stability.path
+                os.remove(self.stability.path)
+        if self.summary:
+            if os.path.isfile(self.summary.path):
+                dir_ = self.summary.path
+                os.remove(self.summary.path)
+        if (dir_ is not None):
+            dir_ = os.path.dirname(os.path.join(settings.MEDIA_ROOT, str(dir_)))
+            if (os.path.isdir(dir_)):
+                os.rmdir(os.path.join(dir_))
+        self.ssRNA_id = None
+        self.ssRNA_fasta = None
+        self.dsDNA_fasta = None
+        self.stability = None
+        self.summary = None
 
 @receiver(models.signals.post_delete, sender=JobData)
 def auto_delete_file_on_delete(sender, instance, **kwargs):
-    if instance.ssRNA_id:
-        if os.path.isfile(instance.ssRNA_id.path):
-            os.remove(instance.ssRNA_id.path)
-    if instance.ssRNA_fasta:
-        if os.path.isfile(instance.ssRNA_fasta.path):
-            os.remove(instance.ssRNA_fasta.path)
-    if instance.dsDNA_fasta:
-        if os.path.isfile(instance.dsDNA_fasta.path):
-            os.remove(instance.dsDNA_fasta.path)
-    if instance.stability:
-        if os.path.isfile(instance.stability.path):
-            os.remove(instance.stability.path)
-    if instance.summary:
-        if os.path.isfile(instance.summary.path):
-            os.remove(instance.summary.path)
-    if (os.path.isdir(os.path.join(settings.MEDIA_ROOT, str(instance.token.token)))):
-        os.rmdir(os.path.join(settings.MEDIA_ROOT, str(instance.token.token)))
+    instance.delete_all_files()

@@ -25,7 +25,7 @@ class SubmitjobController(APIView):
     parser_classes = [parsers.MultiPartParser] 
 
     def post(self, request, *args, **kwargs):
-        token = None
+        tokenObject = None; jobData = None
         try:
             #Check ssRNA:
             if (SSRNA_FASTA in request.data):
@@ -52,20 +52,24 @@ class SubmitjobController(APIView):
                 jobName = NAME_FIELD; 
             else:
                 jobName = None
+
             #Format triplex_params
             triplex_params = TriplexService.parse_3plex_params(request.data)
-            #Get new token
-            token = TokenQueueService.get_new_token(name=jobName, email=email).token
-            #Submit job to backend server
-            TriplexService.submit_job(ssRNA_fasta, dsDNA_fasta, token, triplex_params)
             #Initialize data section to receive results
-            ResultsMngServices.initialize_data_section(token, ssRNA_fasta, dsDNA_fasta, triplex_params, request.data[SSRNA_ID] if SSRNA_ID in request.data else None )
-            return Responses.success({"token": token})
+            jobData = ResultsMngServices.initialize_or_retrieve_data_section(ssRNA_fasta, dsDNA_fasta, triplex_params, request.data[SSRNA_ID] if SSRNA_ID in request.data else None )
+            #Get new token
+            tokenObject = TokenQueueService.get_new_token(name=jobName, email=email, jobData=jobData)
+            #Submit job to backend server
+            if (tokenObject.state == "Created"):
+                ResultsMngServices.set_job_submitted(jobData)
+                TriplexService.submit_job(ssRNA_fasta, dsDNA_fasta, tokenObject.token, triplex_params)
+            return Responses.success({"token": tokenObject})
         except TriplexException as e:
-            if (token is not None):
-                TokenQueueService.remove_token(token)
+            if (tokenObject is not None):
+                tokenObject.delete()
+            if (jobData is not None):
                 try:
-                    ResultsMngServices.delete_data_by_token(token)
+                    ResultsMngServices.delete_data_if_orphan(jobData)
                 except Exception:
                     pass
             return e.handle()
@@ -74,12 +78,13 @@ class CheckjobController(APIView):
     def get(self, request, *args, **kwargs):
         try:
             token = kwargs.get("token")
+            #Check that token is ready, else raise exception
             token_object = TokenQueueService.find_token(token)
             if (token_object.check_state_ready()):
                 data = ResultsMngServices.get_data_by_token(token)
                 ResultsMngServices.update_data_last_date(token)
             else:
-                data = dict()
+                data = {}
             return Responses.success({"job": token_object, "results": data})
         except TriplexException as e:
             return e.handle()

@@ -17,6 +17,8 @@ default_triplex_params = {
 class TriplexService:
     
     def submit_job(ssRNA_fasta: InMemoryUploadedFile, dsDNA_fasta: InMemoryUploadedFile, token: str, triplex_params):
+        ssRNA_fasta.seek(0)
+        dsDNA_fasta.seek(0)
         url = settings.BACKEND_URL+f"/submit/{token}"
         files = {'ssRNA_fasta': ssRNA_fasta, 'dsDNA_fasta': dsDNA_fasta}
         triplex_tuples = [(key, triplex_params[key]) for key in triplex_params.keys()]
