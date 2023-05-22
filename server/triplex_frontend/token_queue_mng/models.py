@@ -2,6 +2,7 @@ from django.db import models
 from triplex_frontend.triplex_exceptions import JobFailedException, JobCancelledException,DataExpiredException,DataNotReadyYetException
 from django.db import IntegrityError
 import secrets 
+import datetime
 from results_mng.models import JobData
 from django.forms import model_to_dict
 
@@ -19,10 +20,16 @@ class Token(models.Model):
     def state(self) -> str:
         return self.job.state
 
+    
+    @property
+    def submission_date_formatted(self) -> str:
+        return self.submission_date.strftime("%d-%m-%Y %H:%M:%S")
+
     def to_dict(self):
         dict_ = model_to_dict(self)
         dict_["state"] = self.state
         dict_["token"] = self.token
+        dict_["date"] =  self.submission_date.strftime("%d-%m-%Y %H:%M:%S")
         return dict_
 
     def assert_state_ready(self):

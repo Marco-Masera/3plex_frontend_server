@@ -30,12 +30,18 @@ DEBUG = True
 ALLOWED_HOSTS = ["192.168.186.10"]
 MEDIA_ROOT = path.join(BASE_DIR, '../media_root')
 MEDIA_URL = "3plex/results/"
-
+CLIENT_URL = "http://192.168.186.10:4201/"
 #App global variables
 RUN_CLEANUP_EVERY_HOURS = 12
 CLEANUP_AFTER_HOURS = 168
+#Email config
+EMAIL_USE_TLS = True
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST_USER = '3plex.service@gmail.com'# 'stabulario.application@gmail.com'
+EMAIL_HOST_PASSWORD = 'fujkmmbadequheof'#  'Pippo123'
+EMAIL_PORT = 587
 # Application definition
-
+CORS_ALLOW_ALL_ORIGINS = True
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -44,6 +50,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    "corsheaders",
     'rest_framework',
     'triplex',
     'token_queue_mng',
@@ -58,6 +65,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.common.CommonMiddleware",
 ]
 
 ROOT_URLCONF = 'triplex_frontend.urls'

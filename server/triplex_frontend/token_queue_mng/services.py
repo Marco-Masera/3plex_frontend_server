@@ -2,6 +2,8 @@ from token_queue_mng.models import *
 from django.core.exceptions import ObjectDoesNotExist
 from triplex_frontend.triplex_exceptions import TokenDoesNotExistException
 from typing import Optional
+from django.core.mail import send_mail
+from django.conf import settings
 
 class TokenQueueService:
     
@@ -29,3 +31,45 @@ class TokenQueueService:
     def get_tokens_by_job(job):
         return Token.objects.filter(job=job)
 
+    def notify_user_email_job_completed(token: Token):
+        if (token.email_address is None):
+            return
+        if (token.job_name is not None):
+            message = f"Hi.\nYour job with token {token.token} and name {token.job_name}, sent on {token.submission_date_formatted}, is completed."
+        else:
+            message = f"Hi.\nYour job with token {token.token}, sent on {token.submission_date_formatted}, is completed."
+        message = message + f"\nYou can check it at: {settings.CLIENT_URL}checkjob/token/{token.token}"
+        send_mail(
+            "3plex: your job is completed",
+            message,
+            settings.EMAIL_HOST_USER,
+            [token.email_address],
+            fail_silently=False,
+        )
+    
+    def notify_user_email_job_failed(token: Token):
+        if (token.email_address is None):
+            return
+        if (token.job_name is not None):
+            message = f"Hi.\nYour job with token {token.token} and name {token.job_name}, sent on {token.submission_date_formatted}, has failed."
+        else:
+            message = f"Hi.\nYour job with token {token.token}, sent on {token.submission_date_formatted}, has failed."
+        message = message + f"\nYou can check it at: {settings.CLIENT_URL}checkjob/token/{token.token}"
+        send_mail(
+            "3plex: your job failed",
+            message,
+            settings.EMAIL_HOST_USER,
+            [token.email_address],
+            fail_silently=False,
+        )
+
+    def notify_all_users_email_job_completed(job):
+        users = Token.objects.filter(job=job)
+        for user in users:
+            TokenQueueService.notify_user_email_job_completed(user)
+
+    def notify_all_users_email_job_failed(job):
+        users = Token.objects.filter(job=job)
+        for user in users:
+            TokenQueueService.notify_user_email_job_failed(user)
+        

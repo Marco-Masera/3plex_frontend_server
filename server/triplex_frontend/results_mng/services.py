@@ -19,6 +19,7 @@ class ResultsMngServices:
         if (len(TokenQueueService.get_tokens_by_job(jobData))==0):
             jobData.delete()
 
+
     def find_job_with_equal_input(hash_string, other_job):
         jobs = JobData.objects.filter(hash_code=hash_string).filter(Q(state="Submitted") | Q(state="Ready")).filter(triplex_params=other_job.triplex_params)
         for job in jobs:
@@ -38,9 +39,9 @@ class ResultsMngServices:
         job.save() #To generate id
         job.ssRNA_id = ssRNA_id 
         job.ssRNA_fasta = ssRNA_fasta
-        job.ssRNA_fasta.name = f"{job.pk}/ssRNA.fa"
+        job.ssRNA_fasta.name = f"{job.base_path}/ssRNA.fa"
         job.dsDNA_fasta = dsDNA_fasta
-        job.dsDNA_fasta.name = f"{job.pk}/dsDNA.fa"
+        job.dsDNA_fasta.name = f"{job.base_path}/dsDNA.fa"
         job.save()
         #Check if there is a viable job already submitted
         existingJob = ResultsMngServices.find_job_with_equal_input(hashed, job)
@@ -60,10 +61,11 @@ class ResultsMngServices:
 
         data.stability = stability
         data.summary = summary
-        data.stability.name = f"{data.pk}/{data.stability.name}"
-        data.summary.name = f"{data.pk}/{data.summary.name}"
+        data.stability.name = f"{data.base_path}/{data.stability.name}"
+        data.summary.name = f"{data.base_path}/{data.summary.name}"
         data.state = "Ready"
         data.save()
+        TokenQueueService.notify_all_users_email_job_completed(data)
         return data
 
     def update_data_last_date(token: str):
@@ -74,22 +76,28 @@ class ResultsMngServices:
     def get_data_by_token(token:str):
         data = ResultsMngServices.get_by_token(token)
         #Returns urls of available data
+        def clean_name(name):
+            return name.split("/")[-1]
         available = dict()
         if (data.ssRNA_fasta != None):
-            available[data.ssRNA_fasta.name] = data.ssRNA_fasta.url
+            available[clean_name(data.ssRNA_fasta.name)] = data.ssRNA_fasta.url
         if (data.dsDNA_fasta != None):
-            available[data.dsDNA_fasta.name] = data.dsDNA_fasta.url
+            available[clean_name(data.dsDNA_fasta.name)] = data.dsDNA_fasta.url
         if (data.stability != None):
-            available[data.stability.name] = data.stability.url
+            available[clean_name(data.stability.name)] = data.stability.url
         if (data.summary != None):
-            available[data.summary.name] = data.summary.url
+            available[clean_name(data.summary.name)] = data.summary.url
         return available
 
+    def get_triplex_params(token:str):
+        data = ResultsMngServices.get_by_token(token)
+        return data.triplex_params
     
     def set_job_failed(token: str):
         jobObject = ResultsMngServices.get_by_token(token)
         jobObject.state = "Failed"
         jobObject.save()
+        TokenQueueService.notify_all_users_email_job_failed(jobObject)
     
     def cleanup_old_jobs(cleanup_older_than):
         old_jobs = JobData.objects.filter(date__lte=cleanup_older_than, cleaned_up = False)
