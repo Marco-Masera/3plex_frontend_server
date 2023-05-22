@@ -1,7 +1,14 @@
 from django.db import models
 from django.dispatch import receiver
 from django.conf import settings
+import secrets 
 import os
+from django.db import IntegrityError
+
+
+def generate_random_alphanumeric(length) -> str:
+    return secrets.token_urlsafe(length).replace("/","_").replace(" ", "").replace("\t", "")
+
 
 state_choices = [
         ("Created", "Created"),
@@ -11,7 +18,6 @@ state_choices = [
         ("Cancelled","Cancelled"),
         ("Failed","Failed")
 ]
-
 
 class JobData(models.Model):
     #Tells django to index hash_code field for faster lookup
@@ -24,6 +30,8 @@ class JobData(models.Model):
     date = models.DateTimeField(auto_now_add=True, auto_now=False)
     triplex_params = models.JSONField()
     
+    base_path = models.CharField(max_length=17, blank=False, unique=True)
+
     ssRNA_id = models.IntegerField(default=None, null=True)
     ssRNA_fasta = models.FileField(default=None, null=True)
     dsDNA_fasta = models.FileField(default=None, null=True)
@@ -61,6 +69,28 @@ class JobData(models.Model):
         self.stability = None
         self.summary = None
 
+    def save(self, *args, **kwargs):
+        if not self.base_path:
+            print("Saving")
+            self.base_path = generate_random_alphanumeric(16)
+            # using your function as above or anything else
+            failures = 0
+            while True:
+                print("Trying")
+                failures += 1
+                try:
+                    super(JobData, self).save(*args, **kwargs)
+                except IntegrityError:
+                    pass
+                if failures > 5: # or some other arbitrary cutoff point at which things are clearly wrong
+                    raise Exception()
+                else:
+                    self.auto_pseudoid = generate_random_alphanumeric(16)
+                    break
+        else:
+            super(JobData, self).save(*args, **kwargs)
+
 @receiver(models.signals.post_delete, sender=JobData)
 def auto_delete_file_on_delete(sender, instance, **kwargs):
     instance.delete_all_files()
+

@@ -11,7 +11,10 @@ def get_hash(in_memory_files, dicts):
             data = file_.read(BUF_SIZE)
             if not data:
                 break
-            hashed.update(data)
+            if (type(data)==str):
+                hashed.update(str(data).encode('utf-8'))
+            else:
+                hashed.update(data)
     for file_ in in_memory_files:
         file_.seek(0)
     for dict_ in dicts:

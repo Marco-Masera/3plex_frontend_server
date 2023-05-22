@@ -4,6 +4,7 @@ from rest_framework import permissions
 from django.core.serializers import serialize
 from django.forms.models import model_to_dict
 from triplex_frontend.responses import Responses
+from io import StringIO
 from triplex.services import TriplexService
 import json
 from django.core.files.uploadedfile import InMemoryUploadedFile
@@ -30,6 +31,10 @@ class SubmitjobController(APIView):
             #Check ssRNA:
             if (SSRNA_FASTA in request.data):
                 ssRNA_fasta = request.data[SSRNA_FASTA]
+            elif ("SSRNA_STRING" in request.data):
+                buff = StringIO(request.data["SSRNA_STRING"])
+                buff.seek(0)
+                ssRNA_fasta = InMemoryUploadedFile(buff,'file',"ssRNA",None,buff.tell(),None)
             elif (SSRNA_ID in request.data):
                 #TODO get sequence from Id
                 raise ModuleNotImplementedYetException()
@@ -49,12 +54,22 @@ class SubmitjobController(APIView):
             else: 
                 email = None
             if (NAME_FIELD in request.data): 
-                jobName = NAME_FIELD; 
+                jobName = request.data[NAME_FIELD]; 
             else:
                 jobName = None
 
+            if (not isinstance(dsDNA_fasta,InMemoryUploadedFile)):
+                raise DsDnaNotProvidedException()
+            if (not isinstance(ssRNA_fasta,InMemoryUploadedFile)):
+                raise SsRnaNotProvidedException()  
+            #rename input files
+            ssRNA_fasta.name="ssRNA.fa"
+            dsDNA_fasta.name="dsDNA.fa"
+
             #Format triplex_params
             triplex_params = TriplexService.parse_3plex_params(request.data)
+            #Adjust header of ssRNA
+            ssRNA_fasta = TriplexService.adjust_ssRNA_header(ssRNA_fasta)
             #Initialize data section to receive results
             jobData = ResultsMngServices.initialize_or_retrieve_data_section(ssRNA_fasta, dsDNA_fasta, triplex_params, request.data[SSRNA_ID] if SSRNA_ID in request.data else None )
             #Get new token
@@ -63,6 +78,8 @@ class SubmitjobController(APIView):
             if (tokenObject.state == "Created"):
                 ResultsMngServices.set_job_submitted(jobData)
                 TriplexService.submit_job(ssRNA_fasta, dsDNA_fasta, tokenObject.token, triplex_params)
+            else:
+                TokenQueueService.notify_user_email_job_completed(tokenObject)
             return Responses.success({"token": tokenObject})
         except TriplexException as e:
             if (tokenObject is not None):
@@ -82,10 +99,12 @@ class CheckjobController(APIView):
             token_object = TokenQueueService.find_token(token)
             if (token_object.check_state_ready()):
                 data = ResultsMngServices.get_data_by_token(token)
+                params = ResultsMngServices.get_triplex_params(token)
                 ResultsMngServices.update_data_last_date(token)
             else:
                 data = {}
-            return Responses.success({"job": token_object, "results": data})
+                params = ResultsMngServices.get_triplex_params(token)
+            return Responses.success({"job": token_object, "results": data, "params": params})
         except TriplexException as e:
             return e.handle()
 
