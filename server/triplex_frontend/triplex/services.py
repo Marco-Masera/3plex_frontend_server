@@ -1,9 +1,9 @@
 from token_queue_mng.models import *
-from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
 from django.conf import settings
 import requests
 from io import StringIO
-from triplex_frontend.triplex_exceptions import CannotSubmitToBackendException
+from triplex_frontend.triplex_exceptions import CannotSubmitToBackendException, TriplexParamOutOfBound
 
 default_triplex_params = {
     'min_len': 8,
@@ -14,9 +14,48 @@ default_triplex_params = {
     'consecutive_errors': 1,
     'SSTRAND': 0
 }
+triplex_params_description = {
+    'min_len': "Minimum triplex length required. Minimum: 6",
+    'max_len': "Maximum triplex length permitted, M=-1 imply no limit.",
+    'error_rate': "Maximal percentage of error allowed in a triplex. Max 20.",
+    'guanine_rate': "Minimal guanine percentage required in any TTS.",
+    'filter_repeat': "If enabled, exclude repeat and low complexity regions.",
+    'consecutive_errors': "Maximum number of consecutive errors allowed in a triplex.",
+    'SSTRAND': "Percentage of masked RNA nucleotides based on RNAplfold base pairing probabilities."
+}
+#Inclusive bounds for the params. None is meant as boundless
+triplex_params_bounds = {
+    'min_len': [6, None],
+    'max_len': [-1, None],
+    'error_rate': [0, 20],
+    'guanine_rate': [1, 100],
+    'filter_repeat': None,
+    'consecutive_errors': [0, None],
+    'SSTRAND': [0, 100]
+}
 
 class TriplexService:
     
+    def get_triplex_default_params_bounds_and_description():
+        r = dict()
+        for elem in default_triplex_params.keys():
+            r[elem] = {"bounds": triplex_params_bounds[elem], "default": default_triplex_params[elem], "description": triplex_params_description[elem]}
+        return r
+
+    def validate_triplex_params(params: dict):
+        for param in params.keys():
+            bounds = triplex_params_bounds[param]
+            if (bounds is None):
+                continue
+            try:
+                value = int(params[param])
+            except ValueError:
+                raise TriplexParamOutOfBound(f"3plex param {param} has illegal value {params[param]}")
+            if (bounds[0] is not None and bounds[0] > value):
+                raise TriplexParamOutOfBound(f"3plex param {param} is set to {params[param]} but its lower limit is {bounds[0]}")
+            if (bounds[1] is not None and bounds[1] < value):
+                raise TriplexParamOutOfBound(f"3plex param {param} is set to {params[param]} but its upper limit is {bounds[1]}")
+
     def submit_job(ssRNA_fasta: InMemoryUploadedFile, dsDNA_fasta: InMemoryUploadedFile, token: str, triplex_params):
         ssRNA_fasta.seek(0)
         dsDNA_fasta.seek(0)
@@ -41,14 +80,15 @@ class TriplexService:
             'consecutive_errors': data.get('consecutive_errors', default_triplex_params['consecutive_errors']),
             'SSTRAND': data.get('SSTRAND', default_triplex_params['SSTRAND'])
         }
-    
+
     def adjust_ssRNA_header(ssRNA:InMemoryUploadedFile):
         first_line = ssRNA.readline()
         new_file = StringIO()
+        #InMemoryUploadedFile can come in 2 encodings: text or binary. They need to be managed differently
         if (type(first_line)==str):
             if (not first_line.startswith(">")):
                 ssRNA.seek(0)
-            new_file.write(">ssRNA\n")
+            new_file.write(f">{settings.SSRNA_HEADER }\n")
             while True:
                 data = ssRNA.read(65536)
                 if not data:
@@ -58,7 +98,7 @@ class TriplexService:
             first_line = first_line.decode()
             if (not first_line.startswith(">")):
                 ssRNA.seek(0)
-            new_file.write(">ssRNA\n")
+            new_file.write(f">{settings.SSRNA_HEADER }\n")
             while True:
                 data = ssRNA.read(65536).decode()
                 if not data:

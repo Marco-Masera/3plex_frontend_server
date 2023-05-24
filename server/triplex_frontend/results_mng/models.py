@@ -37,9 +37,14 @@ class JobData(models.Model):
     dsDNA_fasta = models.FileField(default=None, null=True)
     stability = models.FileField(default=None, null=True)
     summary = models.FileField(default=None, null=True)
+    rawLogsSTDOUT = models.FileField(default=None, null=True)
+    rawLogsSTDERR = models.FileField(default=None, null=True)
 
     #Cleaned up keep tracks of the job history, if it was cleaned up after not being accessed for some time
     cleaned_up = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.date} - {self.state}"
 
     def delete_all_files(self):
         dir_ = None
@@ -59,6 +64,14 @@ class JobData(models.Model):
             if os.path.isfile(self.summary.path):
                 dir_ = self.summary.path
                 os.remove(self.summary.path)
+        if self.rawLogsSTDOUT:
+            if os.path.isfile(self.rawLogsSTDOUT.path):
+                dir_ = self.rawLogsSTDOUT.path
+                os.remove(self.rawLogsSTDOUT.path)
+        if self.rawLogsSTDERR:
+            if os.path.isfile(self.rawLogsSTDERR.path):
+                dir_ = self.rawLogsSTDERR.path
+                os.remove(self.rawLogsSTDERR.path)
         if (dir_ is not None):
             dir_ = os.path.dirname(os.path.join(settings.MEDIA_ROOT, str(dir_)))
             if (os.path.isdir(dir_)):
@@ -68,6 +81,8 @@ class JobData(models.Model):
         self.dsDNA_fasta = None
         self.stability = None
         self.summary = None
+        self.rawLogsSTDERR = None 
+        self.rawLogsSTDOUT = None
 
     def save(self, *args, **kwargs):
         if not self.base_path:

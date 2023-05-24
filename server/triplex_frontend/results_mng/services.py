@@ -2,8 +2,10 @@ from .models import JobData
 from triplex_frontend.triplex_exceptions import DataDoesNotExistException, TokenIsNotStateSubmittedException
 from token_queue_mng.services import TokenQueueService
 from datetime import datetime
+from django.conf import settings
 from django.db.models import Q
 import filecmp
+import hmac
 from results_mng.hash_lib import get_hash
 
 class ResultsMngServices:
@@ -39,9 +41,9 @@ class ResultsMngServices:
         job.save() #To generate id
         job.ssRNA_id = ssRNA_id 
         job.ssRNA_fasta = ssRNA_fasta
-        job.ssRNA_fasta.name = f"{job.base_path}/ssRNA.fa"
+        job.ssRNA_fasta.name = f"{job.base_path}/{settings.SSRNA_BASE_NAME}"
         job.dsDNA_fasta = dsDNA_fasta
-        job.dsDNA_fasta.name = f"{job.base_path}/dsDNA.fa"
+        job.dsDNA_fasta.name = f"{job.base_path}/{settings.DSDNA_BASE_NAME}"
         job.save()
         #Check if there is a viable job already submitted
         existingJob = ResultsMngServices.find_job_with_equal_input(hashed, job)
@@ -79,23 +81,35 @@ class ResultsMngServices:
         def clean_name(name):
             return name.split("/")[-1]
         available = dict()
-        if (data.ssRNA_fasta != None):
+        if (data.ssRNA_fasta != None  and bool(data.ssRNA_fasta)):
             available[clean_name(data.ssRNA_fasta.name)] = data.ssRNA_fasta.url
-        if (data.dsDNA_fasta != None):
+        if (data.dsDNA_fasta != None  and bool(data.dsDNA_fasta)):
             available[clean_name(data.dsDNA_fasta.name)] = data.dsDNA_fasta.url
-        if (data.stability != None):
+        if (data.stability != None  and bool(data.stability)):
             available[clean_name(data.stability.name)] = data.stability.url
-        if (data.summary != None):
+        if (data.summary != None  and bool(data.summary)):
             available[clean_name(data.summary.name)] = data.summary.url
+        if (data.rawLogsSTDERR != None and bool(data.rawLogsSTDERR)):
+            available["Logs_STDERR"] = data.rawLogsSTDERR.url
+        if (data.rawLogsSTDOUT != None and bool(data.rawLogsSTDOUT)):
+            available["Logs_STDOUT"] = data.rawLogsSTDOUT.url
         return available
 
     def get_triplex_params(token:str):
         data = ResultsMngServices.get_by_token(token)
         return data.triplex_params
     
-    def set_job_failed(token: str):
+    def set_job_failed(token: str, STDOUT = None, STDERR = None):
         jobObject = ResultsMngServices.get_by_token(token)
         jobObject.state = "Failed"
+
+        if (STDOUT is not None):
+            jobObject.rawLogsSTDOUT = STDOUT
+            jobObject.rawLogsSTDOUT.name = f"{jobObject.base_path}/Logs_STDOUT"
+        if (STDERR is not None):
+            jobObject.rawLogsSTDERR = STDERR
+            jobObject.rawLogsSTDERR.name = f"{jobObject.base_path}/Logs_STDERR"
+
         jobObject.save()
         TokenQueueService.notify_all_users_email_job_failed(jobObject)
     
@@ -113,3 +127,8 @@ class ResultsMngServices:
     def set_job_submitted(jobData: JobData):
         jobData.state = "Submitted"
         jobData.save()
+
+    def check_token_hmac(token, hashed):
+        h = hmac.new(bytes(settings.HMAC_KEY, 'utf-8'), msg=bytes(token, 'utf-8'), digestmod='sha256')
+        digested = h.hexdigest()
+        return hmac.compare_digest(digested, hashed)
