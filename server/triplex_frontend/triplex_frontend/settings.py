@@ -24,14 +24,29 @@ BACKEND_URL = "http://127.0.0.1:5000"
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-&0o*(s9@=kl=)_*+^^#g4(d-aynnwwyci(642zg52lqi7y4#zv'
 
+#HMAC Secret key. Warning_ keep the key used in production safe
+HMAC_KEY = "YOU_WISH_YOU_KNEW_MY_SECRET_KEY!"
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 ALLOWED_HOSTS = ["192.168.186.10"]
+
+#App parameters (possibly to be moved to env variables on deploy..?)
+#Rename of file names
+SSRNA_BASE_NAME = "ssRNA.fa" #all ssRNA.fa file will be renamed to this
+DSDNA_BASE_NAME = "dsDNA.fa" #same with dsDNA_fasta
+SSRNA_HEADER = "ssRNA"
+#Files and urls
+FILE_UPLOAD_MAX_MEMORY_SIZE =4000000
+DSDNA_MAX_SIZE = 3000000000
+SSRNA_MAX_SIZE = 2000000
+
+
 MEDIA_ROOT = path.join(BASE_DIR, '../media_root')
 MEDIA_URL = "3plex/results/"
 CLIENT_URL = "http://192.168.186.10:4201/"
-#App global variables
+#Cleanup service
 RUN_CLEANUP_EVERY_HOURS = 12
 CLEANUP_AFTER_HOURS = 168
 #Email config
@@ -40,8 +55,12 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_HOST_USER = '3plex.service@gmail.com'# 'stabulario.application@gmail.com'
 EMAIL_HOST_PASSWORD = 'fujkmmbadequheof'#  'Pippo123'
 EMAIL_PORT = 587
+#Admin
+ADMINS = [('Marco', 'marco.masera@unito.it')]
+
 # Application definition
 CORS_ALLOW_ALL_ORIGINS = True
+
 
 INSTALLED_APPS = [
     'django.contrib.admin',

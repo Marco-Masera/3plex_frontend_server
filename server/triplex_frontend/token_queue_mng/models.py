@@ -16,6 +16,9 @@ class Token(models.Model):
     email_address = models.EmailField(max_length=254, null=True, default=None)
     job = models.ForeignKey(JobData, on_delete=models.PROTECT)
 
+    def __str__(self):
+        return f"{self.submission_date} - {self.job_name} - {self.token}"
+
     @property
     def state(self) -> str:
         return self.job.state
@@ -46,6 +49,9 @@ class Token(models.Model):
 
     def check_state_ready(self):
         return self.state == "Ready"
+    
+    def check_state_failed(self):
+        return self.state == "Failed"
     
     def save(self, *args, **kwargs):
         if not self.token:

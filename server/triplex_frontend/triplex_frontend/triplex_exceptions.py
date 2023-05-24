@@ -69,3 +69,27 @@ class JobFailedException(TriplexException):
         return Responses.generic_failure(
             message="Job failed",
             errorCode= status.HTTP_410_GONE)
+
+class TriplexParamOutOfBound(TriplexException):
+    def __init__(self, message):
+        self.message = message 
+        super().__init__(self)
+    def handle(self):
+        return Responses.generic_failure(
+            message=self.message,
+            errorCode= status.HTTP_400_BAD_REQUEST)
+
+class Unauthorized(TriplexException):
+    def handle(self):
+        return Responses.generic_failure(
+            message="Qualcuno sta provando a fare il furbetto??",
+            errorCode= status.HTTP_401_UNAUTHORIZED)
+
+class InputFileTooBig(TriplexException):
+    def __init__(self, message):
+        self.message = message 
+        super().__init__(self)
+    def handle(self):
+        return Responses.generic_failure(
+            message=self.message,
+            errorCode= status.HTTP_400_BAD_REQUEST)

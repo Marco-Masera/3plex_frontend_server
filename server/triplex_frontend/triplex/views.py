@@ -5,9 +5,10 @@ from django.core.serializers import serialize
 from django.forms.models import model_to_dict
 from triplex_frontend.responses import Responses
 from io import StringIO
+from django.conf import settings
 from triplex.services import TriplexService
 import json
-from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
 from rest_framework import parsers
 from triplex_frontend.triplex_exceptions import *
 from token_queue_mng.services import TokenQueueService
@@ -15,6 +16,7 @@ from results_mng.services import ResultsMngServices
 
 #Input body as key-value form-data with keys:
 SSRNA_FASTA = "SSRNA_FASTA" #Fasta file as ssRNA input
+SSRNA_STRING = "SSRNA_STRING" #Sequence like the one in SSRNA_FASTA but provided in string form
 DSDNA_FASTA = "DSDNA_FASTA" #Fasta file as dsDNA input
 SSRNA_ID = "SSRNA_ID" #Id of the transcript
 DSDNA_COORD_BED = "DSDNA_COORD_BED" #Bed file with coordinates
@@ -31,8 +33,11 @@ class SubmitjobController(APIView):
             #Check ssRNA:
             if (SSRNA_FASTA in request.data):
                 ssRNA_fasta = request.data[SSRNA_FASTA]
-            elif ("SSRNA_STRING" in request.data):
-                buff = StringIO(request.data["SSRNA_STRING"])
+            elif (SSRNA_STRING in request.data):
+                #Verify size of string before creating the fake InMemoryFile
+                if (len(request.data[SSRNA_STRING]) > settings.SSRNA_MAX_SIZE):
+                    raise InputFileTooBig(f"Your ssRNA string file exceed our limit of {settings.SSRNA_MAX_SIZE} characters")
+                buff = StringIO(request.data[SSRNA_STRING])
                 buff.seek(0)
                 ssRNA_fasta = InMemoryUploadedFile(buff,'file',"ssRNA",None,buff.tell(),None)
             elif (SSRNA_ID in request.data):
@@ -58,18 +63,24 @@ class SubmitjobController(APIView):
             else:
                 jobName = None
 
-            if (not isinstance(dsDNA_fasta,InMemoryUploadedFile)):
+            if (not isinstance(dsDNA_fasta,InMemoryUploadedFile) and not isinstance(dsDNA_fasta, TemporaryUploadedFile)):
                 raise DsDnaNotProvidedException()
-            if (not isinstance(ssRNA_fasta,InMemoryUploadedFile)):
+            if (not isinstance(ssRNA_fasta,InMemoryUploadedFile) and not isinstance(ssRNA_fasta, TemporaryUploadedFile)):
                 raise SsRnaNotProvidedException()  
+            if (dsDNA_fasta.size > settings.DSDNA_MAX_SIZE):
+                raise InputFileTooBig(f"Your dsDNA fasta file exceed our limit of {settings.DSDNA_MAX_SIZE} bytes")
+            if (ssRNA_fasta.size > settings.SSRNA_MAX_SIZE):
+                raise InputFileTooBig(f"Your ssRNA fasta file exceed our limit of {settings.SSRNA_MAX_SIZE} bytes")
+            
             #rename input files
-            ssRNA_fasta.name="ssRNA.fa"
-            dsDNA_fasta.name="dsDNA.fa"
-
-            #Format triplex_params
-            triplex_params = TriplexService.parse_3plex_params(request.data)
+            ssRNA_fasta.name = settings.SSRNA_BASE_NAME 
+            dsDNA_fasta.name = settings.DSDNA_BASE_NAME
             #Adjust header of ssRNA
             ssRNA_fasta = TriplexService.adjust_ssRNA_header(ssRNA_fasta)
+            #Format triplex_params
+            triplex_params = TriplexService.parse_3plex_params(request.data)
+            #Validate them 
+            TriplexService.validate_triplex_params(triplex_params)
             #Initialize data section to receive results
             jobData = ResultsMngServices.initialize_or_retrieve_data_section(ssRNA_fasta, dsDNA_fasta, triplex_params, request.data[SSRNA_ID] if SSRNA_ID in request.data else None )
             #Get new token
@@ -90,6 +101,15 @@ class SubmitjobController(APIView):
                 except Exception:
                     pass
             return e.handle()
+        except Exception as e:
+            if (tokenObject is not None):
+                tokenObject.delete()
+            if (jobData is not None):
+                try:
+                    ResultsMngServices.delete_data_if_orphan(jobData)
+                except Exception:
+                    pass
+            raise e
 
 class CheckjobController(APIView):
     def get(self, request, *args, **kwargs):
@@ -97,7 +117,7 @@ class CheckjobController(APIView):
             token = kwargs.get("token")
             #Check that token is ready, else raise exception
             token_object = TokenQueueService.find_token(token)
-            if (token_object.check_state_ready()):
+            if (token_object.check_state_ready() or token_object.check_state_failed()):
                 data = ResultsMngServices.get_data_by_token(token)
                 params = ResultsMngServices.get_triplex_params(token)
                 ResultsMngServices.update_data_last_date(token)
@@ -114,5 +134,13 @@ class CheckjobsByEmailController(APIView):
             email = kwargs.get("email")
             tokens = TokenQueueService.get_tokens_by_email(email)
             return Responses.success(tokens)
+        except TriplexException as e:
+            return e.handle()
+
+class TriplexDefaultParams(APIView):
+    def get(self, request, *args, **kwargs):
+        try:
+            params = TriplexService.get_triplex_default_params_bounds_and_description()
+            return Responses.success(params)
         except TriplexException as e:
             return e.handle()
