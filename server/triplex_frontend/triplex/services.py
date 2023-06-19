@@ -56,17 +56,20 @@ class TriplexService:
             if (bounds[1] is not None and bounds[1] < value):
                 raise TriplexParamOutOfBound(f"3plex param {param} is set to {params[param]} but its upper limit is {bounds[1]}")
 
-    def submit_job(ssRNA_fasta: InMemoryUploadedFile, dsDNA_fasta: InMemoryUploadedFile, token: str, triplex_params):
+    def submit_job(ssRNA_fasta, dsDNA_fasta, token: str, triplex_params):
         ssRNA_fasta.seek(0)
         dsDNA_fasta.seek(0)
+        print(ssRNA_fasta)
         url = settings.BACKEND_URL+f"/submit/{token}"
         files = {'ssRNA_fasta': ssRNA_fasta, 'dsDNA_fasta': dsDNA_fasta}
         triplex_tuples = [(key, triplex_params[key]) for key in triplex_params.keys()]
         try:
             r = requests.post(url, files=files, data=triplex_tuples)
             if (r.status_code != 200):
+                print(f"Bad response: {r.content}")
                 raise CannotSubmitToBackendException()
-        except:
+        except Exception as e:
+            print(e)
             raise CannotSubmitToBackendException()
         
 

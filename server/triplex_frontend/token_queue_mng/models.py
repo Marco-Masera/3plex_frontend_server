@@ -7,10 +7,10 @@ from results_mng.models import JobData
 from django.forms import model_to_dict
 
 def generate_random_alphanumeric(length) -> str:
-    return secrets.token_urlsafe(32).replace("/","_").replace(" ", "").replace("\t", "")
+    return secrets.token_urlsafe(length).replace("/","_").replace(" ", "").replace("\t", "")
 
 class Token(models.Model):
-    token = models.CharField(max_length=32, blank=False, editable=False, unique=True, primary_key=True)
+    token = models.CharField(max_length=64, blank=False, editable=False, unique=True, primary_key=True)
     submission_date = models.DateTimeField(auto_now_add=True, auto_now=False)
     job_name = models.CharField(max_length=64, null=True, default=None)
     email_address = models.EmailField(max_length=254, null=True, default=None)
@@ -22,7 +22,11 @@ class Token(models.Model):
     @property
     def state(self) -> str:
         return self.job.state
-
+    @property
+    def ssRNA_id(self) -> str:
+        if (self.job.ssRNA_id is not None):
+            return self.job.ssRNA_id.id
+        return None
     
     @property
     def submission_date_formatted(self) -> str:
@@ -33,6 +37,7 @@ class Token(models.Model):
         dict_["state"] = self.state
         dict_["token"] = self.token
         dict_["date"] =  self.submission_date.strftime("%d-%m-%Y %H:%M:%S")
+        dict_["ssRNA_id"] = self.ssRNA_id
         return dict_
 
     def assert_state_ready(self):

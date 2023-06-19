@@ -20,6 +20,7 @@ SSRNA_STRING = "SSRNA_STRING" #Sequence like the one in SSRNA_FASTA but provided
 DSDNA_FASTA = "DSDNA_FASTA" #Fasta file as dsDNA input
 SSRNA_ID = "SSRNA_ID" #Id of the transcript
 DSDNA_COORD_BED = "DSDNA_COORD_BED" #Bed file with coordinates
+DSDNA_TARGET_NAME = "DSDNA_TARGET_NAME"
 #Input for extra params
 NAME_FIELD = "JOBNAME"
 EMAIL_FIELD = "EMAIL"
@@ -28,9 +29,10 @@ class SubmitjobController(APIView):
     parser_classes = [parsers.MultiPartParser] 
 
     def post(self, request, *args, **kwargs):
-        tokenObject = None; jobData = None
+        tokenObject = None; jobData = None; ssRNA_id = None
         try:
             #Check ssRNA:
+            ssRNA_fasta = None
             if (SSRNA_FASTA in request.data):
                 ssRNA_fasta = request.data[SSRNA_FASTA]
             elif (SSRNA_STRING in request.data):
@@ -41,8 +43,7 @@ class SubmitjobController(APIView):
                 buff.seek(0)
                 ssRNA_fasta = InMemoryUploadedFile(buff,'file',"ssRNA",None,buff.tell(),None)
             elif (SSRNA_ID in request.data):
-                #TODO get sequence from Id
-                raise ModuleNotImplementedYetException()
+                ssRNA_id = request.data["SSRNA_ID"]
             else:
                 raise SsRnaNotProvidedException()
             #Check dsDNA:
@@ -50,6 +51,9 @@ class SubmitjobController(APIView):
                 dsDNA_fasta = request.data[DSDNA_FASTA]
             elif (DSDNA_COORD_BED in request.data):
                 #TODO get sequence from bed file
+                raise ModuleNotImplementedYetException()
+            elif (DSDNA_TARGET_NAME in request.data):
+                #todo use target site in db
                 raise ModuleNotImplementedYetException()
             else:
                 raise DsDnaNotProvidedException()
@@ -63,30 +67,37 @@ class SubmitjobController(APIView):
             else:
                 jobName = None
 
-            if (not isinstance(dsDNA_fasta,InMemoryUploadedFile) and not isinstance(dsDNA_fasta, TemporaryUploadedFile)):
-                raise DsDnaNotProvidedException()
-            if (not isinstance(ssRNA_fasta,InMemoryUploadedFile) and not isinstance(ssRNA_fasta, TemporaryUploadedFile)):
-                raise SsRnaNotProvidedException()  
-            if (dsDNA_fasta.size > settings.DSDNA_MAX_SIZE):
-                raise InputFileTooBig(f"Your dsDNA fasta file exceed our limit of {settings.DSDNA_MAX_SIZE} bytes")
-            if (ssRNA_fasta.size > settings.SSRNA_MAX_SIZE):
-                raise InputFileTooBig(f"Your ssRNA fasta file exceed our limit of {settings.SSRNA_MAX_SIZE} bytes")
+            if (ssRNA_fasta is not None):
+                if (not isinstance(ssRNA_fasta,InMemoryUploadedFile) and not isinstance(ssRNA_fasta, TemporaryUploadedFile)):
+                    raise SsRnaNotProvidedException() 
+                if (ssRNA_fasta.size > settings.SSRNA_MAX_SIZE):
+                    raise InputFileTooBig(f"Your ssRNA fasta file exceed our limit of {settings.SSRNA_MAX_SIZE} bytes")
+                #rename input files
+                ssRNA_fasta.name = settings.SSRNA_BASE_NAME 
+                #Adjust header of ssRNA
+                ssRNA_fasta = TriplexService.adjust_ssRNA_header(ssRNA_fasta)
             
-            #rename input files
-            ssRNA_fasta.name = settings.SSRNA_BASE_NAME 
-            dsDNA_fasta.name = settings.DSDNA_BASE_NAME
-            #Adjust header of ssRNA
-            ssRNA_fasta = TriplexService.adjust_ssRNA_header(ssRNA_fasta)
+            if (dsDNA_fasta is not None):
+                if (not isinstance(dsDNA_fasta,InMemoryUploadedFile) and not isinstance(dsDNA_fasta, TemporaryUploadedFile)):
+                    raise DsDnaNotProvidedException()
+                if (dsDNA_fasta.size > settings.DSDNA_MAX_SIZE):
+                    raise InputFileTooBig(f"Your dsDNA fasta file exceed our limit of {settings.DSDNA_MAX_SIZE} bytes")
+                dsDNA_fasta.name = settings.DSDNA_BASE_NAME
+
+        
             #Format triplex_params
             triplex_params = TriplexService.parse_3plex_params(request.data)
             #Validate them 
             TriplexService.validate_triplex_params(triplex_params)
             #Initialize data section to receive results
-            jobData = ResultsMngServices.initialize_or_retrieve_data_section(ssRNA_fasta, dsDNA_fasta, triplex_params, request.data[SSRNA_ID] if SSRNA_ID in request.data else None )
+            jobData = ResultsMngServices.initialize_or_retrieve_data_section(ssRNA_fasta, dsDNA_fasta, triplex_params, ssRNA_id)
+            if (ssRNA_fasta is None):
+                ssRNA_fasta = open(jobData.ssRNA_id.ssRNA_fasta_path, 'rb')
             #Get new token
             tokenObject = TokenQueueService.get_new_token(name=jobName, email=email, jobData=jobData)
             #Submit job to backend server
             if (tokenObject.state == "Created"):
+                #Todo se Id invece di ssRNA
                 ResultsMngServices.set_job_submitted(jobData)
                 TriplexService.submit_job(ssRNA_fasta, dsDNA_fasta, tokenObject.token, triplex_params)
             else:
@@ -110,6 +121,9 @@ class SubmitjobController(APIView):
                 except Exception:
                     pass
             raise e
+        #finally:
+        #    ssRNA_fasta.close()
+
 
 class CheckjobController(APIView):
     def get(self, request, *args, **kwargs):
@@ -142,5 +156,40 @@ class TriplexDefaultParams(APIView):
         try:
             params = TriplexService.get_triplex_default_params_bounds_and_description()
             return Responses.success(params)
+        except TriplexException as e:
+            return e.handle()
+
+class TranscriptsNamesSearchApi(APIView):
+    def get(self, request, *args, **kwargs):
+        query = kwargs.get("query")
+        species = kwargs.get("species")
+        max_elems = request.query_params.get('max_elems')
+        transcripts = ResultsMngServices.search_longest_transcripts(query, species, max_elems)
+        return Responses.success(list(transcripts))
+
+class GetDnaTargetSitesApi(APIView):
+    def get(self, request, *args, **kwargs):
+        transcripts = ResultsMngServices.get_dna_target_sites()
+        return Responses.success(list(transcripts))
+
+class VisualsController(APIView):
+    def get(self, request, *args, **kwargs):
+        try:
+            token = kwargs.get("token")
+            token_object = TokenQueueService.find_token(token)
+            #If token not ready return error
+            token_object.assert_state_ready()
+            #Retrieve data for visualizations
+            data = ResultsMngServices.get_data_for_visuals(token)
+            ResultsMngServices.update_data_last_date(token)
+            
+            return Responses.success({"job": token_object, "available": data})
+        except TriplexException as e:
+            return e.handle()
+
+class GetAllowedSpecies(APIView):
+    def get(self, request, *args, **kwargs):
+        try:
+            return Responses.success([species[0] for species in settings.ALLOWED_SPECIES])
         except TriplexException as e:
             return e.handle()

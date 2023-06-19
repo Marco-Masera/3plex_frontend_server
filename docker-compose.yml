@@ -1,0 +1,51 @@
+version: "3"
+services:
+  app:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    entrypoint: ["./wait.sh"]
+    depends_on:
+      - db
+    ports:
+      - "8001:8001"
+
+  db:
+    image: mysql:8.0.21
+    ports:
+      - "30000:3306"
+    command: --init-file /data/application/init.sql
+    environment:
+      MYSQL_ROOT_PASSWORD: triplex
+      MYSQL_DATABASE: triplex
+    volumes:
+      - ./db/script.sql:/data/application/init.sql
+      - triplex_db:/var/lib/mysql
+    cap_add:
+      - SYS_NICE  # CAP_SYS_NICE
+
+
+  db-backup:
+    profiles: ["cli-only"]
+    image: alpine    
+    tty: false
+    environment:
+      - TARGET=triplex_db
+    volumes:
+      - ./backup:/backup
+      - triplex_db:/volume
+    command: sh -c "tar -cjf /backup/$${TARGET}.tar.bz2 -C /volume ./"
+
+  db-restore:
+    profiles: ["cli-only"]
+    image: alpine    
+    environment:
+      - SOURCE=triplex_db
+    volumes:
+      - ./backup:/backup
+      - triplex_db:/volume
+    command: sh -c "rm -rf /volume/* /volume/..?* /volume/.[!.]* ; tar -C /volume/ -xjf /backup/$${SOURCE}.tar.bz2"
+
+volumes:
+  triplex_db:
+    external: true
