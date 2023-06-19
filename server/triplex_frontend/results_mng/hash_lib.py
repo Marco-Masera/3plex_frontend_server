@@ -7,6 +7,8 @@ BUF_SIZE = 65536  # lets read stuff in 64kb chunks!
 def get_hash(in_memory_files, dicts):
     hashed = hashlib.sha1()
     for file_ in in_memory_files:
+        if (file_ is None):
+            continue
         while True:
             data = file_.read(BUF_SIZE)
             if not data:
@@ -16,7 +18,8 @@ def get_hash(in_memory_files, dicts):
             else:
                 hashed.update(data)
     for file_ in in_memory_files:
-        file_.seek(0)
+        if (file_ is not None):
+            file_.seek(0)
     for dict_ in dicts:
         hashed.update(str(dict_).encode('utf-8'))
     return hashed.digest()

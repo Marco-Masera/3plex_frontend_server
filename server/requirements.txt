@@ -6,6 +6,7 @@ cryptography==40.0.2
 defusedxml==0.7.1
 Django==4.1.1
 django-allauth==0.51.0
+django-cors-headers==4.0.0
 django-su==1.0.0
 djangorestframework==3.14.0
 et-xmlfile==1.1.0

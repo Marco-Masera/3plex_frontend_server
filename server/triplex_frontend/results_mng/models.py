@@ -5,9 +5,64 @@ import secrets
 import os
 from django.db import IntegrityError
 
+ALLOWED_SPECIES = settings.ALLOWED_SPECIES
 
 def generate_random_alphanumeric(length) -> str:
     return secrets.token_urlsafe(length).replace("/","_").replace(" ", "").replace("\t", "")
+
+
+
+class DnaTargetSites(models.Model):
+    name = models.CharField(max_length=64, primary_key=True)
+    filename = models.CharField(max_length=128, null=False, blank=False)
+    description = models.CharField(max_length=256, null=True, default=None)
+    external_ref = models.CharField(max_length=256, null=True, default=None)
+    n_sequences = models.IntegerField()
+    total_size_KB = models.IntegerField()
+    species = models.CharField(max_length=32, null=False, blank=False, choices=ALLOWED_SPECIES)
+    version = models.IntegerField(null=False, blank=False)
+
+    @property
+    def file_link(self):
+        return "" #TODO
+
+
+
+class LongestTranscript(models.Model):
+    id = models.CharField(max_length=256, primary_key=True, unique=True, null=False, blank=False)
+    chromosome = models.SlugField(max_length=10, null=False, blank=False)
+    strand = models.SlugField(max_length=2, null=False, blank=False)
+    transcript_type = models.SlugField(max_length=64, null=False, blank=False)
+    longest = models.BooleanField()
+    gene_name = models.SlugField(max_length=32, null=False, blank=False)
+    gene_id = models.SlugField(max_length=32, null=False, blank=False)
+
+    species = models.CharField(max_length=32, null=False, blank=False, choices=ALLOWED_SPECIES)
+
+    @property
+    def ssRNA_fasta_path(self):
+        return f"{settings.MEDIA_ROOT_ABS_PATH}/transcripts/{self.species}/{self.id.split('.')[0]}.fa.gz"
+    @property
+    def ssRNA_fasta_url(self):
+        return f"/3plex/results/transcripts/{self.species}/{self.id.split('.')[0]}.fa.gz"
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'chromosome': self.chromosome,
+            'strand': self.strand,
+            'transcript_type': self.transcript_type,
+            'gene_name': self.gene_name,
+            'gene_id': self.gene_id,
+            'longest': self.longest
+        }
+
+class TranscriptExon(models.Model):
+    transcript_id = models.ForeignKey(LongestTranscript, on_delete=models.CASCADE)
+    chr = models.CharField(max_length=16)
+    start = models.IntegerField(null=False, blank=False)
+    end = models.IntegerField(null=False, blank=False)
+    strand = models.CharField(max_length=1)
 
 
 state_choices = [
@@ -25,18 +80,20 @@ class JobData(models.Model):
         indexes = [models.Index(fields=['hash_code']),]
 
     state = models.CharField(max_length=16, choices = state_choices, default = "Created")
-    hash_code = models.CharField(max_length=20)
+    hash_code = models.CharField(max_length=128)
 
     date = models.DateTimeField(auto_now_add=True, auto_now=False)
     triplex_params = models.JSONField()
     
-    base_path = models.CharField(max_length=17, blank=False, unique=True)
+    base_path = models.CharField(max_length=64, blank=False, unique=True)
 
-    ssRNA_id = models.IntegerField(default=None, null=True)
+    ssRNA_id = models.ForeignKey(LongestTranscript, on_delete=models.PROTECT, default=None, null=True)
     ssRNA_fasta = models.FileField(default=None, null=True)
     dsDNA_fasta = models.FileField(default=None, null=True)
     stability = models.FileField(default=None, null=True)
     summary = models.FileField(default=None, null=True)
+    profile = models.FileField(default=None, null=True)
+    secondary_structure = models.FileField(default=None, null=True)
     rawLogsSTDOUT = models.FileField(default=None, null=True)
     rawLogsSTDERR = models.FileField(default=None, null=True)
 
@@ -72,7 +129,15 @@ class JobData(models.Model):
             if os.path.isfile(self.rawLogsSTDERR.path):
                 dir_ = self.rawLogsSTDERR.path
                 os.remove(self.rawLogsSTDERR.path)
-        if (dir_ is not None):
+        if self.profile and self.profile.path:
+            if os.path.isfile(self.profile.path):
+                dir_ = self.profile.path
+                os.remove(self.profile.path)
+        if self.secondary_structure and self.secondary_structure.path:
+            if os.path.isfile(self.secondary_structure.path):
+                dir_ = self.secondary_structure.path
+                os.remove(self.secondary_structure.path)
+        if (dir_ is not None and len(dir_)>0):
             dir_ = os.path.dirname(os.path.join(settings.MEDIA_ROOT, str(dir_)))
             if (os.path.isdir(dir_)):
                 os.rmdir(os.path.join(dir_))
@@ -87,7 +152,7 @@ class JobData(models.Model):
     def save(self, *args, **kwargs):
         if not self.base_path:
             print("Saving")
-            self.base_path = generate_random_alphanumeric(16)
+            self.base_path = generate_random_alphanumeric(32)
             # using your function as above or anything else
             failures = 0
             while True:
@@ -100,7 +165,7 @@ class JobData(models.Model):
                 if failures > 5: # or some other arbitrary cutoff point at which things are clearly wrong
                     raise Exception()
                 else:
-                    self.auto_pseudoid = generate_random_alphanumeric(16)
+                    self.auto_pseudoid = generate_random_alphanumeric(32)
                     break
         else:
             super(JobData, self).save(*args, **kwargs)

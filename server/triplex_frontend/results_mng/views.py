@@ -16,6 +16,8 @@ from triplex_frontend.triplex_exceptions import DidNotReceiveInputFilesException
 #Input body as key-value form-data with keys:
 STABILITY = "STABILITY"
 SUMMARY = "SUMMARY"
+PROFILE = "PROFILE"
+SECONDARY_STRUCTURE = "SECONDARY_STRUCTURE"
 STDOUT= "STDOUT"
 STDERR = "STDERR"
 HASHED_TOKEN = "HTOKEN"
@@ -35,12 +37,16 @@ class SubmitResult(APIView):
 
             stability = request.data[STABILITY]
             summary = request.data[SUMMARY]
+            profile = request.data[PROFILE]
+            secondary_struct = request.data[SECONDARY_STRUCTURE]
             if (stability is None or summary is None):
                 raise DidNotReceiveInputFilesException()
             if (stability.size == 0 or summary.size == 0):
                 raise DidNotReceiveInputFilesException()
+            if (profile is None or profile.size == 0):
+                raise DidNotReceiveInputFilesException()
 
-            ResultsMngServices.receive_data(token, stability, summary)
+            ResultsMngServices.receive_data(token, stability, summary, profile, secondary_struct)
             ResultsMngServices.update_data_last_date(token)
             
         except TriplexException as e:

@@ -1,5 +1,5 @@
-from .models import JobData
-from triplex_frontend.triplex_exceptions import DataDoesNotExistException, TokenIsNotStateSubmittedException
+from .models import *
+from triplex_frontend.triplex_exceptions import DataDoesNotExistException, TokenIsNotStateSubmittedException, SsRnaIdNotValidException
 from token_queue_mng.services import TokenQueueService
 from datetime import datetime
 from django.conf import settings
@@ -7,6 +7,13 @@ from django.db.models import Q
 import filecmp
 import hmac
 from results_mng.hash_lib import get_hash
+from visualization.visualization_utils import get_repeats_by_transcript_id, get_conservation_by_transcript_id
+
+def safe_file_cmp(file_1, file_2):
+    if (bool(file_1) and bool(file_2)):
+        return filecmp.cmp(file_1.path, file_2.path)
+    else:
+        return file_1 == file_2
 
 class ResultsMngServices:
     #Retrieve data from token (string)
@@ -27,23 +34,35 @@ class ResultsMngServices:
         for job in jobs:
             if (job.pk == other_job.pk):
                 continue
-            if (filecmp.cmp(job.ssRNA_fasta.path, other_job.ssRNA_fasta.path) and filecmp.cmp(job.dsDNA_fasta.path, other_job.dsDNA_fasta.path)):
+            #Check they are actually equal
+            if (safe_file_cmp(job.dsDNA_fasta, other_job.dsDNA_fasta) and (
+                (job.ssRNA_id is not None and other_job.ssRNA_id is not None and job.ssRNA_id==other_job.ssRNA_id) 
+                or (safe_file_cmp(job.ssRNA_fasta, other_job.ssRNA_fasta))
+            )):
                 return job
         return None 
 
     def initialize_or_retrieve_data_section(ssRNA_fasta, dsDNA_fasta, triplex_params, ssRNA_id = None):
         #Compute hash value of input data
-        hashed = get_hash([ssRNA_fasta,dsDNA_fasta], [triplex_params])
+        hashed = get_hash([ssRNA_fasta,dsDNA_fasta], [triplex_params, {"id":ssRNA_id}])
         #initialize new data section, keep track of sequence and id, used later for computing the conservation
         job = JobData()
         job.hash_code = hashed
         job.triplex_params = triplex_params
         job.save() #To generate id
-        job.ssRNA_id = ssRNA_id 
-        job.ssRNA_fasta = ssRNA_fasta
-        job.ssRNA_fasta.name = f"{job.base_path}/{settings.SSRNA_BASE_NAME}"
+        if (ssRNA_id is not None):
+            try:
+                longestTranscript = LongestTranscript.objects.get(id=ssRNA_id)
+                job.ssRNA_id = longestTranscript
+            except LongestTranscript.DoesNotExist:
+                raise SsRnaIdNotValidException()
+        else:
+            job.ssRNA_id = None
+        if (ssRNA_fasta is not None):
+            job.ssRNA_fasta = ssRNA_fasta
+            job.ssRNA_fasta.name = f"jobs/{job.base_path}/{settings.SSRNA_BASE_NAME}"
         job.dsDNA_fasta = dsDNA_fasta
-        job.dsDNA_fasta.name = f"{job.base_path}/{settings.DSDNA_BASE_NAME}"
+        job.dsDNA_fasta.name = f"jobs/{job.base_path}/{settings.DSDNA_BASE_NAME}"
         job.save()
         #Check if there is a viable job already submitted
         existingJob = ResultsMngServices.find_job_with_equal_input(hashed, job)
@@ -53,7 +72,7 @@ class ResultsMngServices:
             return existingJob
         return job
     
-    def receive_data(token: str, stability, summary) -> JobData:
+    def receive_data(token: str, stability, summary, profile, secondary_struct) -> JobData:
         #Note: data must be initialized or this will return DataDoesNotExistException
         tokenObject = TokenQueueService.find_token(token)
         data = tokenObject.job
@@ -63,8 +82,12 @@ class ResultsMngServices:
 
         data.stability = stability
         data.summary = summary
-        data.stability.name = f"{data.base_path}/{data.stability.name}"
-        data.summary.name = f"{data.base_path}/{data.summary.name}"
+        data.stability.name = f"jobs/{data.base_path}/{data.stability.name}"
+        data.summary.name = f"jobs/{data.base_path}/{data.summary.name}"
+        data.profile = profile
+        data.profile.name = f"jobs/{data.base_path}/{data.profile.name}"
+        data.secondary_structure = secondary_struct
+        data.secondary_structure.name = f"jobs/{data.base_path}/{data.secondary_structure.name}"
         data.state = "Ready"
         data.save()
         TokenQueueService.notify_all_users_email_job_completed(data)
@@ -74,6 +97,25 @@ class ResultsMngServices:
         jobData = ResultsMngServices.get_by_token(token)
         jobData.date = datetime.now()
         jobData.save()
+
+    def get_data_for_visuals(token:str):
+        data = ResultsMngServices.get_by_token(token)
+        #Returns urls of available data
+        def clean_name(name):
+            return name.split("/")[-1]
+        available = dict()
+        #Profile for tfo count
+        if (data.profile != None  and bool(data.profile)):
+            available["tfo_profile"] = data.profile.url
+        if (data.secondary_structure != None  and bool(data.secondary_structure)):
+            available["secondary_structure"] = data.secondary_structure.url
+        #Signal for conservation
+        if (data.ssRNA_id):
+            available["conservation"] = get_conservation_by_transcript_id(data.ssRNA_id)
+            #Signal for repeats
+            available["repeats"] = get_repeats_by_transcript_id(data.ssRNA_id)
+        
+        return available
     
     def get_data_by_token(token:str):
         data = ResultsMngServices.get_by_token(token)
@@ -83,6 +125,8 @@ class ResultsMngServices:
         available = dict()
         if (data.ssRNA_fasta != None  and bool(data.ssRNA_fasta)):
             available[clean_name(data.ssRNA_fasta.name)] = data.ssRNA_fasta.url
+        elif (data.ssRNA_id != None):
+            available[f"ssRNA_{data.ssRNA_id.id}"] = data.ssRNA_id.ssRNA_fasta_url
         if (data.dsDNA_fasta != None  and bool(data.dsDNA_fasta)):
             available[clean_name(data.dsDNA_fasta.name)] = data.dsDNA_fasta.url
         if (data.stability != None  and bool(data.stability)):
@@ -105,10 +149,10 @@ class ResultsMngServices:
 
         if (STDOUT is not None):
             jobObject.rawLogsSTDOUT = STDOUT
-            jobObject.rawLogsSTDOUT.name = f"{jobObject.base_path}/Logs_STDOUT"
+            jobObject.rawLogsSTDOUT.name = f"jobs/{jobObject.base_path}/Logs_STDOUT"
         if (STDERR is not None):
             jobObject.rawLogsSTDERR = STDERR
-            jobObject.rawLogsSTDERR.name = f"{jobObject.base_path}/Logs_STDERR"
+            jobObject.rawLogsSTDERR.name = f"jobs/{jobObject.base_path}/Logs_STDERR"
 
         jobObject.save()
         TokenQueueService.notify_all_users_email_job_failed(jobObject)
@@ -132,3 +176,13 @@ class ResultsMngServices:
         h = hmac.new(bytes(settings.HMAC_KEY, 'utf-8'), msg=bytes(token, 'utf-8'), digestmod='sha256')
         digested = h.hexdigest()
         return hmac.compare_digest(digested, hashed)
+
+    def search_longest_transcripts(query, species, max_elems = 20):
+        if (max_elems != None):
+            max_elems = int(max_elems)
+            return LongestTranscript.objects.filter(species=species).filter(Q(gene_id__istartswith=query) | Q(id__istartswith=query) | Q(gene_name__istartswith=query)).order_by('-longest')[:max_elems]
+        
+        return LongestTranscript.objects.filter(Q(gene_id__istartswith=query) | Q(id__istartswith=query) | Q(gene_name__istartswith=query)).order_by('-longest')
+
+    def get_dna_target_sites():
+        return DnaTargetSites.objects.all()

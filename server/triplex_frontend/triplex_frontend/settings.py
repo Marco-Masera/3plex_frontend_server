@@ -11,55 +11,61 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 """
 
 from pathlib import Path
-from os import path
+from os import path, getenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+#Allowed species
+ALLOWED_SPECIES = [
+        ("hsapiens", "hsapiens"),
+        ("mmusculus","mmusculus")
+]
+
 #Constants:
-BACKEND_URL = "http://127.0.0.1:5000"
+BACKEND_URL = getenv("BACKEND_SERVER_URL")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-&0o*(s9@=kl=)_*+^^#g4(d-aynnwwyci(642zg52lqi7y4#zv'
+SECRET_KEY = getenv("DJANGO_SECURE_KEY")
 
 #HMAC Secret key. Warning_ keep the key used in production safe
-HMAC_KEY = "YOU_WISH_YOU_KNEW_MY_SECRET_KEY!"
+HMAC_KEY = getenv("HMAC_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = ["192.168.186.10"]
+DEBUG = bool(getenv("DEBUG"))
+ALLOWED_HOSTS = getenv('ALLOWED_HOSTS').split(',')
 
 #App parameters (possibly to be moved to env variables on deploy..?)
 #Rename of file names
-SSRNA_BASE_NAME = "ssRNA.fa" #all ssRNA.fa file will be renamed to this
-DSDNA_BASE_NAME = "dsDNA.fa" #same with dsDNA_fasta
-SSRNA_HEADER = "ssRNA"
+SSRNA_BASE_NAME = getenv("SSRNA_BASE_NAME")
+DSDNA_BASE_NAME = getenv("DSDNA_BASE_NAME")
+SSRNA_HEADER = getenv("SSRNA_HEADER")
 #Files and urls
-FILE_UPLOAD_MAX_MEMORY_SIZE =4000000
-DSDNA_MAX_SIZE = 3000000000
-SSRNA_MAX_SIZE = 2000000
+FILE_UPLOAD_MAX_MEMORY_SIZE = int(getenv("FILE_UPLOAD_MAX_MEMORY_SIZE"))
+DSDNA_MAX_SIZE = int(getenv("DSDNA_MAX_SIZE"))
+SSRNA_MAX_SIZE = int(getenv("SSRNA_MAX_SIZE"))
 
 
-MEDIA_ROOT = path.join(BASE_DIR, '../media_root')
-MEDIA_URL = "3plex/results/"
-CLIENT_URL = "http://192.168.186.10:4201/"
+MEDIA_ROOT = getenv("MEDIA_ROOT")
+MEDIA_URL = getenv("MEDIA_URL")
+CLIENT_URL = getenv("CLIENT_URL")
+MEDIA_ROOT_ABS_PATH = path.join(path.abspath(path.dirname(__name__)), MEDIA_ROOT)
 #Cleanup service
-RUN_CLEANUP_EVERY_HOURS = 12
-CLEANUP_AFTER_HOURS = 168
+RUN_CLEANUP_EVERY_HOURS = int(getenv("RUN_CLEANUP_EVERY_HOURS"))
+CLEANUP_AFTER_HOURS = int(getenv("CLEANUP_AFTER_HOURS"))
 #Email config
-EMAIL_USE_TLS = True
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_HOST_USER = '3plex.service@gmail.com'# 'stabulario.application@gmail.com'
-EMAIL_HOST_PASSWORD = 'fujkmmbadequheof'#  'Pippo123'
-EMAIL_PORT = 587
+EMAIL_USE_TLS = bool(getenv("EMAIL_USE_TLS"))
+EMAIL_HOST = getenv("EMAIL_HOST")
+EMAIL_HOST_USER = getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = getenv("EMAIL_HOST_PASSWORD")
+EMAIL_PORT = int(getenv("EMAIL_PORT"))
 #Admin
-ADMINS = [('Marco', 'marco.masera@unito.it')]
+ADMINS = [ (elem.split(",")[0], elem.split(",")[1]) for elem in getenv("ADMINS").split(";")]
 
 # Application definition
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = bool(getenv("CORS_ALLOW_ALL_ORIGINS"))
 
 
 INSTALLED_APPS = [
@@ -114,8 +120,14 @@ WSGI_APPLICATION = 'triplex_frontend.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.{}'.format(
+                getenv('DATABASE_ENGINE')
+            ),
+         'NAME': getenv('DATABASE_NAME'),
+         'USER': getenv('DATABASE_USERNAME', ''),
+         'PASSWORD': getenv('DATABASE_PASSWORD', 'triplex'),
+         'HOST': getenv('DATABASE_HOST', ''), 
+         'PORT': getenv('DATABASE_PORT', 0)
     }
 }
 

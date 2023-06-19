@@ -7,12 +7,18 @@ class TriplexException(Exception):
 
 class ModuleNotImplementedYetException(TriplexException):
     def handle(self):
-        return Responses.generic_failure(message="The module is not ready yet")
+        return Responses.generic_failure(message="The module is not ready yet on the server side")
 
 class SsRnaNotProvidedException(TriplexException):
     def handle(self):
         return Responses.generic_failure(
             message="You need to provide either a ssRNA fasta file as 'SSRNA_FASTA' or an Id as 'SSRNA_ID'",
+            errorCode= status.HTTP_400_BAD_REQUEST)
+
+class SsRnaIdNotValidException(TriplexException):
+    def handle(self):
+        return Responses.generic_failure(
+            message="The longest transcript id provided is not recognized in the system.",
             errorCode= status.HTTP_400_BAD_REQUEST)
 
 class DsDnaNotProvidedException(TriplexException):
