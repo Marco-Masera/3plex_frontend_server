@@ -14,92 +14,39 @@ from triplex_frontend.triplex_exceptions import *
 from token_queue_mng.services import TokenQueueService
 from results_mng.services import ResultsMngServices
 
-#Input body as key-value form-data with keys:
-SSRNA_FASTA = "SSRNA_FASTA" #Fasta file as ssRNA input
-SSRNA_STRING = "SSRNA_STRING" #Sequence like the one in SSRNA_FASTA but provided in string form
-DSDNA_FASTA = "DSDNA_FASTA" #Fasta file as dsDNA input
-SSRNA_ID = "SSRNA_ID" #Id of the transcript
-DSDNA_COORD_BED = "DSDNA_COORD_BED" #Bed file with coordinates
-DSDNA_TARGET_NAME = "DSDNA_TARGET_NAME"
-#Input for extra params
-NAME_FIELD = "JOBNAME"
-EMAIL_FIELD = "EMAIL"
+
 
 class SubmitjobController(APIView):
     parser_classes = [parsers.MultiPartParser] 
 
     def post(self, request, *args, **kwargs):
-        tokenObject = None; jobData = None; ssRNA_id = None
+        tokenObject = None; jobData = None;
         try:
-            #Check ssRNA:
-            ssRNA_fasta = None
-            if (SSRNA_FASTA in request.data):
-                ssRNA_fasta = request.data[SSRNA_FASTA]
-            elif (SSRNA_STRING in request.data):
-                #Verify size of string before creating the fake InMemoryFile
-                if (len(request.data[SSRNA_STRING]) > settings.SSRNA_MAX_SIZE):
-                    raise InputFileTooBig(f"Your ssRNA string file exceed our limit of {settings.SSRNA_MAX_SIZE} characters")
-                buff = StringIO(request.data[SSRNA_STRING])
-                buff.seek(0)
-                ssRNA_fasta = InMemoryUploadedFile(buff,'file',"ssRNA",None,buff.tell(),None)
-            elif (SSRNA_ID in request.data):
-                ssRNA_id = request.data["SSRNA_ID"]
-            else:
-                raise SsRnaNotProvidedException()
-            #Check dsDNA:
-            if (DSDNA_FASTA in request.data):
-                dsDNA_fasta = request.data[DSDNA_FASTA]
-            elif (DSDNA_COORD_BED in request.data):
-                #TODO get sequence from bed file
-                raise ModuleNotImplementedYetException()
-            elif (DSDNA_TARGET_NAME in request.data):
-                #todo use target site in db
-                raise ModuleNotImplementedYetException()
-            else:
-                raise DsDnaNotProvidedException()
-            #Check extra field
-            if (EMAIL_FIELD in request.data):
-                email = request.data[EMAIL_FIELD]
-            else: 
-                email = None
-            if (NAME_FIELD in request.data): 
-                jobName = request.data[NAME_FIELD]; 
-            else:
-                jobName = None
-
-            if (ssRNA_fasta is not None):
-                if (not isinstance(ssRNA_fasta,InMemoryUploadedFile) and not isinstance(ssRNA_fasta, TemporaryUploadedFile)):
-                    raise SsRnaNotProvidedException() 
-                if (ssRNA_fasta.size > settings.SSRNA_MAX_SIZE):
-                    raise InputFileTooBig(f"Your ssRNA fasta file exceed our limit of {settings.SSRNA_MAX_SIZE} bytes")
-                #rename input files
-                ssRNA_fasta.name = settings.SSRNA_BASE_NAME 
-                #Adjust header of ssRNA
-                ssRNA_fasta = TriplexService.adjust_ssRNA_header(ssRNA_fasta)
-            
-            if (dsDNA_fasta is not None):
-                if (not isinstance(dsDNA_fasta,InMemoryUploadedFile) and not isinstance(dsDNA_fasta, TemporaryUploadedFile)):
-                    raise DsDnaNotProvidedException()
-                if (dsDNA_fasta.size > settings.DSDNA_MAX_SIZE):
-                    raise InputFileTooBig(f"Your dsDNA fasta file exceed our limit of {settings.DSDNA_MAX_SIZE} bytes")
-                dsDNA_fasta.name = settings.DSDNA_BASE_NAME
-
-        
+            #Parse request parameters
+            ssRNA_fasta, dsDNA_fasta, dsDNA_bed, dsDNA_precomputed, species, ssRNA_id, email, jobName = TriplexService.parse_request_params(request)
+            #Validate and rename ssRNA_fasta
+            ssRNA_fasta = TriplexService.validate_and_rename_ssRNA_fasta(ssRNA_fasta)
+            #Validate and rename dsDNA file(s)
+            dsDNA_file = TriplexService.validate_and_rename_dsDNA(dsDNA_fasta, dsDNA_bed, species)
             #Format triplex_params
             triplex_params = TriplexService.parse_3plex_params(request.data)
             #Validate them 
             TriplexService.validate_triplex_params(triplex_params)
+
             #Initialize data section to receive results
-            jobData = ResultsMngServices.initialize_or_retrieve_data_section(ssRNA_fasta, dsDNA_fasta, triplex_params, ssRNA_id)
+            jobData = ResultsMngServices.initialize_or_retrieve_data_section(ssRNA_fasta, dsDNA_file, dsDNA_precomputed, triplex_params, ssRNA_id, species)
+            #If the ssRNA is specified by ID, open the corresponding file
             if (ssRNA_fasta is None):
                 ssRNA_fasta = open(jobData.ssRNA_id.ssRNA_fasta_path, 'rb')
+            if (dsDNA_precomputed):
+                dsDNA_precomputed = jobData.dsDNA_precomputed_target.filename
             #Get new token
             tokenObject = TokenQueueService.get_new_token(name=jobName, email=email, jobData=jobData)
             #Submit job to backend server
             if (tokenObject.state == "Created"):
                 #Todo se Id invece di ssRNA
                 ResultsMngServices.set_job_submitted(jobData)
-                TriplexService.submit_job(ssRNA_fasta, dsDNA_fasta, tokenObject.token, triplex_params)
+                TriplexService.submit_job(ssRNA_fasta, dsDNA_file, dsDNA_precomputed, tokenObject.token, triplex_params, species)
             else:
                 TokenQueueService.notify_user_email_job_completed(tokenObject)
             return Responses.success({"token": tokenObject})
@@ -121,8 +68,6 @@ class SubmitjobController(APIView):
                 except Exception:
                     pass
             raise e
-        #finally:
-        #    ssRNA_fasta.close()
 
 
 class CheckjobController(APIView):

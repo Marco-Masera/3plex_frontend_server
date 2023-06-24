@@ -4,6 +4,7 @@ server/triplex_frontend/media_root/transcripts/hsapiens/*
 server/triplex_frontend/media_root/transcripts/mmusculus/*
 server/triplex_frontend/static_data/hsapiens/*
 server/local/data/*
+!**/makefile
 server/triplex_frontend/static_data/mmusculus/*
 server/triplex_frontend/results_mng/migrations/*
 **/__pycache__/*

@@ -6,14 +6,10 @@ from django.conf import settings
 from django.db.models import Q
 import filecmp
 import hmac
+import os
 from results_mng.hash_lib import get_hash
 from visualization.visualization_utils import get_repeats_by_transcript_id, get_conservation_by_transcript_id
 
-def safe_file_cmp(file_1, file_2):
-    if (bool(file_1) and bool(file_2)):
-        return filecmp.cmp(file_1.path, file_2.path)
-    else:
-        return file_1 == file_2
 
 class ResultsMngServices:
     #Retrieve data from token (string)
@@ -35,16 +31,13 @@ class ResultsMngServices:
             if (job.pk == other_job.pk):
                 continue
             #Check they are actually equal
-            if (safe_file_cmp(job.dsDNA_fasta, other_job.dsDNA_fasta) and (
-                (job.ssRNA_id is not None and other_job.ssRNA_id is not None and job.ssRNA_id==other_job.ssRNA_id) 
-                or (safe_file_cmp(job.ssRNA_fasta, other_job.ssRNA_fasta))
-            )):
+            if (other_job.semantic_equals(job)):
                 return job
         return None 
 
-    def initialize_or_retrieve_data_section(ssRNA_fasta, dsDNA_fasta, triplex_params, ssRNA_id = None):
+    def initialize_or_retrieve_data_section(ssRNA_fasta, dsDNA_fasta, dsDNA_precomputed, triplex_params, ssRNA_id = None, species = None):
         #Compute hash value of input data
-        hashed = get_hash([ssRNA_fasta,dsDNA_fasta], [triplex_params, {"id":ssRNA_id}])
+        hashed = get_hash([ssRNA_fasta,dsDNA_fasta], [triplex_params, {"id":ssRNA_id, "species": species, "dsDNA_precomputed":dsDNA_precomputed}])
         #initialize new data section, keep track of sequence and id, used later for computing the conservation
         job = JobData()
         job.hash_code = hashed
@@ -61,8 +54,13 @@ class ResultsMngServices:
         if (ssRNA_fasta is not None):
             job.ssRNA_fasta = ssRNA_fasta
             job.ssRNA_fasta.name = f"jobs/{job.base_path}/{settings.SSRNA_BASE_NAME}"
-        job.dsDNA_fasta = dsDNA_fasta
-        job.dsDNA_fasta.name = f"jobs/{job.base_path}/{settings.DSDNA_BASE_NAME}"
+        if (job.dsDNA_fasta is not None):
+            job.dsDNA_fasta = dsDNA_fasta
+            job.dsDNA_fasta.name = f"jobs/{job.base_path}/{job.dsDNA_fasta.name}"
+        if (dsDNA_precomputed is not None):
+            targetSites = DnaTargetSites.objects.get(name=dsDNA_precomputed)
+            job.dsDNA_precomputed_target = targetSites
+        job.species = species
         job.save()
         #Check if there is a viable job already submitted
         existingJob = ResultsMngServices.find_job_with_equal_input(hashed, job)
@@ -127,8 +125,10 @@ class ResultsMngServices:
             available[clean_name(data.ssRNA_fasta.name)] = data.ssRNA_fasta.url
         elif (data.ssRNA_id != None):
             available[f"ssRNA_{data.ssRNA_id.id}"] = data.ssRNA_id.ssRNA_fasta_url
-        if (data.dsDNA_fasta != None  and bool(data.dsDNA_fasta)):
+        if (data.dsDNA_fasta != None and bool(data.dsDNA_fasta) and os.path.isfile(data.dsDNA_fasta.path)):
             available[clean_name(data.dsDNA_fasta.name)] = data.dsDNA_fasta.url
+        if (data.dsDNA_precomputed_target is not None):
+            available[f"dsDNA_{data.dsDNA_precomputed_target.name}"] = data.dsDNA_precomputed_target.dsDNA_url
         if (data.stability != None  and bool(data.stability)):
             available[clean_name(data.stability.name)] = data.stability.url
         if (data.summary != None  and bool(data.summary)):
