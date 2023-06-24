@@ -14,7 +14,7 @@ class Token(models.Model):
     submission_date = models.DateTimeField(auto_now_add=True, auto_now=False)
     job_name = models.CharField(max_length=64, null=True, default=None)
     email_address = models.EmailField(max_length=254, null=True, default=None)
-    job = models.ForeignKey(JobData, on_delete=models.PROTECT)
+    job = models.ForeignKey(JobData, on_delete=models.CASCADE)
 
     def __str__(self):
         return f"{self.submission_date} - {self.job_name} - {self.token}"

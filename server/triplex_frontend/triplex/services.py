@@ -5,6 +5,18 @@ import requests
 from io import StringIO
 from triplex_frontend.triplex_exceptions import CannotSubmitToBackendException, TriplexParamOutOfBound
 
+#Input body as key-value form-data with keys:
+SSRNA_FASTA = "SSRNA_FASTA" #Fasta file as ssRNA input
+SSRNA_STRING = "SSRNA_STRING" #Sequence like the one in SSRNA_FASTA but provided in string form
+DSDNA_FASTA = "DSDNA_FASTA" #Fasta file as dsDNA input
+SSRNA_ID = "SSRNA_ID" #Id of the transcript
+DSDNA_COORD_BED = "DSDNA_COORD_BED" #Bed file with coordinates
+DSDNA_TARGET_NAME = "DSDNA_TARGET_NAME"
+#Input for extra params
+NAME_FIELD = "JOBNAME"
+EMAIL_FIELD = "EMAIL"
+SPECIES_FIELD = "SPECIES"
+
 default_triplex_params = {
     'min_len': 8,
     'max_len': -1,
@@ -56,11 +68,18 @@ class TriplexService:
             if (bounds[1] is not None and bounds[1] < value):
                 raise TriplexParamOutOfBound(f"3plex param {param} is set to {params[param]} but its upper limit is {bounds[1]}")
 
-    def submit_job(ssRNA_fasta, dsDNA_fasta, token: str, triplex_params):
+    def submit_job(ssRNA_fasta, dsDNA_fasta, dsDNA_precomputed, token: str, triplex_params, species):
         ssRNA_fasta.seek(0)
-        dsDNA_fasta.seek(0)
-        print(ssRNA_fasta)
+        if (dsDNA_fasta):
+            dsDNA_fasta.seek(0)
         url = settings.BACKEND_URL+f"/submit/{token}"
+        query_params = []
+        if (species is not None):
+            query_params.append(f"species={species}")
+        if (dsDNA_precomputed is not None):
+            query_params.append(f"dsdna_target={dsDNA_precomputed}")
+        if (len(query_params)>0):
+            url = f"{url}?{ '&'.join(query_params) }"
         files = {'ssRNA_fasta': ssRNA_fasta, 'dsDNA_fasta': dsDNA_fasta}
         triplex_tuples = [(key, triplex_params[key]) for key in triplex_params.keys()]
         try:
@@ -110,3 +129,78 @@ class TriplexService:
         new_file.seek(0)
         ssRNA_fasta = InMemoryUploadedFile(new_file,'file',"ssRNA.fa",None,new_file.tell(),None)
         return ssRNA_fasta
+
+    def parse_request_params(request):
+        #Check ssRNA:
+        ssRNA_fasta = None; dsDNA_fasta = None; dsDNA_bed = None; dsDNA_precomputed = None
+        species = None; ssRNA_id = None; email=None; jobName = None
+
+        if (SSRNA_FASTA in request.data):
+            ssRNA_fasta = request.data[SSRNA_FASTA]
+        elif (SSRNA_STRING in request.data):
+            if (len(request.data[SSRNA_STRING]) > settings.SSRNA_MAX_SIZE):
+                raise InputFileTooBig(f"Your ssRNA string file exceed our limit of {settings.SSRNA_MAX_SIZE} characters")
+            buff = StringIO(request.data[SSRNA_STRING])
+            buff.seek(0)
+            ssRNA_fasta = InMemoryUploadedFile(buff,'file',"ssRNA",None,buff.tell(),None)
+        elif (SSRNA_ID in request.data):
+            ssRNA_id = request.data["SSRNA_ID"]
+        else:
+            raise SsRnaNotProvidedException()
+        #Check dsDNA:
+        if (DSDNA_FASTA in request.data):
+            dsDNA_fasta = request.data[DSDNA_FASTA]
+        elif (DSDNA_COORD_BED in request.data):
+            #Uses bed file
+            dsDNA_bed = request.data[DSDNA_COORD_BED]
+        elif (DSDNA_TARGET_NAME in request.data):
+            dsDNA_precomputed = request.data[DSDNA_TARGET_NAME]
+        else:
+            raise DsDnaNotProvidedException()
+        #Check extra field
+        if (EMAIL_FIELD in request.data):
+            email = request.data[EMAIL_FIELD]
+        else: 
+            email = None
+        if (NAME_FIELD in request.data): 
+            jobName = request.data[NAME_FIELD]; 
+        else:
+            jobName = None
+        if (SPECIES_FIELD in request.data):
+            species = request.data[SPECIES_FIELD]
+            if (not (species,species) in  settings.ALLOWED_SPECIES):
+                raise SpeciesNotSupportedException()
+        
+        return ssRNA_fasta, dsDNA_fasta, dsDNA_bed, dsDNA_precomputed, species, ssRNA_id, email, jobName
+
+    def validate_and_rename_ssRNA_fasta(ssRNA_fasta):
+        if (ssRNA_fasta is not None):
+            if (not isinstance(ssRNA_fasta,InMemoryUploadedFile) and not isinstance(ssRNA_fasta, TemporaryUploadedFile)):
+                raise SsRnaNotProvidedException() 
+            if (ssRNA_fasta.size > settings.SSRNA_MAX_SIZE):
+                raise InputFileTooBig(f"Your ssRNA fasta file exceed our limit of {settings.SSRNA_MAX_SIZE} bytes")
+            #rename input files
+            ssRNA_fasta.name = settings.SSRNA_BASE_NAME 
+            #Adjust header of ssRNA
+            ssRNA_fasta = TriplexService.adjust_ssRNA_header(ssRNA_fasta)
+        return ssRNA_fasta
+    
+    def validate_and_rename_dsDNA(dsDNA_fasta, dsDNA_bed, species):
+        file_to_return = None
+        if (dsDNA_fasta is not None):
+            if (not isinstance(dsDNA_fasta,InMemoryUploadedFile) and not isinstance(dsDNA_fasta, TemporaryUploadedFile)):
+                raise DsDnaNotProvidedException()
+            if (dsDNA_fasta.size > settings.DSDNA_MAX_SIZE):
+                raise InputFileTooBig(f"Your dsDNA fasta file exceed our limit of {settings.DSDNA_MAX_SIZE} bytes")
+            dsDNA_fasta.name = settings.DSDNA_BASE_NAME
+            file_to_return = dsDNA_fasta
+        if (dsDNA_bed is not None):
+            if (not isinstance(dsDNA_bed,InMemoryUploadedFile) and not isinstance(dsDNA_bed, TemporaryUploadedFile)):
+                raise DsDnaNotProvidedException()
+            if (dsDNA_bed.size > settings.DSDNA_MAX_SIZE):
+                raise InputFileTooBig(f"Your dsDNA bed file exceed our limit of {settings.DSDNA_MAX_SIZE} bytes")
+            dsDNA_bed.name = settings.DSDNA_BED_BASE_NAME
+            if (species is None):
+                raise SpeciesNotProvidedException()
+            file_to_return = dsDNA_bed
+        return file_to_return 

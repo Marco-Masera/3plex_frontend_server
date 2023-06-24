@@ -9,7 +9,11 @@ ALLOWED_SPECIES = settings.ALLOWED_SPECIES
 
 def generate_random_alphanumeric(length) -> str:
     return secrets.token_urlsafe(length).replace("/","_").replace(" ", "").replace("\t", "")
-
+def safe_file_cmp(file_1, file_2):
+    if (bool(file_1) and bool(file_2)):
+        return filecmp.cmp(file_1.path, file_2.path)
+    else:
+        return file_1 == file_2
 
 
 class DnaTargetSites(models.Model):
@@ -23,8 +27,11 @@ class DnaTargetSites(models.Model):
     version = models.IntegerField(null=False, blank=False)
 
     @property
-    def file_link(self):
-        return "" #TODO
+    def dsDNA_path(self):
+        return f"{settings.MEDIA_ROOT_ABS_PATH}/ds_dna/{self.species}/{self.filename}"
+    @property
+    def dsDNA_url(self):
+        return f"/3plex/results/ds_dna/{self.species}/{self.filename}"
 
 
 
@@ -89,7 +96,10 @@ class JobData(models.Model):
 
     ssRNA_id = models.ForeignKey(LongestTranscript, on_delete=models.PROTECT, default=None, null=True)
     ssRNA_fasta = models.FileField(default=None, null=True)
+
     dsDNA_fasta = models.FileField(default=None, null=True)
+    dsDNA_precomputed_target = models.ForeignKey(DnaTargetSites, null=True, default=None, on_delete=models.PROTECT)
+
     stability = models.FileField(default=None, null=True)
     summary = models.FileField(default=None, null=True)
     profile = models.FileField(default=None, null=True)
@@ -99,6 +109,21 @@ class JobData(models.Model):
 
     #Cleaned up keep tracks of the job history, if it was cleaned up after not being accessed for some time
     cleaned_up = models.BooleanField(default=False)
+
+    def semantic_equals(self, other_job):
+        #Returns true if the 2 jobs are semantically equals
+        return (
+            #Check equality of dsDNA_fasta files
+            safe_file_cmp(self.dsDNA_fasta, other_job.dsDNA_fasta) 
+            #Check equality of ssRNA_fasta or ssRNA_id
+            and (
+                (self.ssRNA_id is not None and other_job.ssRNA_id is not None and self.ssRNA_id==other_job.ssRNA_id) 
+                or (safe_file_cmp(job.ssRNA_fasta, other_job.ssRNA_fasta)))
+            #Check equality of species 
+            and (job.species == other.species)
+            #Check equality of dsDNA_precomputed_target
+            and (job.dsDNA_precomputed_target == other_job.dsDNA_precomputed_target)
+            )
 
     def __str__(self):
         return f"{self.date} - {self.state}"

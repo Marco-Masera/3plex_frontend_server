@@ -10,6 +10,7 @@ export ALLOWED_HOSTS="192.168.186.10,www.3plex.unito.it,3plex.unito.it"
 #File management config
 export SSRNA_BASE_NAME="ssRNA.fa" #all ssRNA.fa file will be renamed to this
 export DSDNA_BASE_NAME="dsDNA.fa" #same with dsDNA_fasta
+export DSDNA_BED_BASE_NAME="dsDNA.bed" #same with dsDNA_fasta
 export SSRNA_HEADER="ssRNA"
 #Files and urls
 export FILE_UPLOAD_MAX_MEMORY_SIZE=4000000
