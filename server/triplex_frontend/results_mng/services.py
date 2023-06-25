@@ -4,9 +4,9 @@ from token_queue_mng.services import TokenQueueService
 from datetime import datetime
 from django.conf import settings
 from django.db.models import Q
-import filecmp
 import hmac
 import os
+import gzip
 from results_mng.hash_lib import get_hash
 from visualization.visualization_utils import get_repeats_by_transcript_id, get_conservation_by_transcript_id
 
@@ -112,6 +112,21 @@ class ResultsMngServices:
             available["conservation"] = get_conservation_by_transcript_id(data.ssRNA_id)
             #Signal for repeats
             available["repeats"] = get_repeats_by_transcript_id(data.ssRNA_id)
+        #ssRNA sequence
+        if (data.ssRNA_id is not None):
+            ssRNA_fasta = data.ssRNA_id.ssRNA_fasta_path
+            with gzip.open(ssRNA_fasta, mode='rt') as file:
+                sequence = file.read()
+                sequence = ''.join(sequence.splitlines(keepends=False)[1:])
+                available["sequence"] = sequence
+        else:
+            ssRNA_fasta = data.ssRNA_fasta.path
+            with open(ssRNA_fasta, 'r') as file:
+                sequence = file.read()
+                sequence = ''.join(sequence.splitlines(keepends=False)[1:])
+                available["sequence"] = sequence
+        #Read and return file withput header
+        
         
         return available
     

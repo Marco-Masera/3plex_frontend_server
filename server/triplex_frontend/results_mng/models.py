@@ -3,6 +3,7 @@ from django.dispatch import receiver
 from django.conf import settings
 import secrets 
 import os
+import filecmp
 from django.db import IntegrityError
 
 ALLOWED_SPECIES = settings.ALLOWED_SPECIES
@@ -10,7 +11,7 @@ ALLOWED_SPECIES = settings.ALLOWED_SPECIES
 def generate_random_alphanumeric(length) -> str:
     return secrets.token_urlsafe(length).replace("/","_").replace(" ", "").replace("\t", "")
 def safe_file_cmp(file_1, file_2):
-    if (bool(file_1) and bool(file_2)):
+    if (bool(file_1) and bool(file_2) and os.path.isfile(file_2.path) and os.path.isfile(file_1.path)):
         return filecmp.cmp(file_1.path, file_2.path)
     else:
         return file_1 == file_2
