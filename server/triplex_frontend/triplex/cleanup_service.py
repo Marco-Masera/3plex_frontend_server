@@ -28,6 +28,7 @@ def run_continuously(self, interval=60):
 Scheduler.run_continuously = run_continuously
 
 def start_cleanup_service():
+    print("Starting cleanup service")
     scheduler = Scheduler()
     scheduler.every(settings.RUN_CLEANUP_EVERY_HOURS).hours.do(run_cleanup)
     #scheduler.every().second.do(run_cleanup)
