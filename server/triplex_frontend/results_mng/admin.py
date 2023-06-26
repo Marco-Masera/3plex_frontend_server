@@ -4,7 +4,7 @@ from .models import *
 
 @admin.register(JobData)
 class JobDataAdmin(admin.ModelAdmin):
-    pass
+    readonly_fields = ("ssRNA_id",)
 
 @admin.register(LongestTranscript)
 class LongestTranscriptAdmin(admin.ModelAdmin):

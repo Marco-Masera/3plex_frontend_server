@@ -17,7 +17,7 @@ class TokenQueueService:
             raise TokenDoesNotExistException()
 
     def get_tokens_by_email(email):
-        return Token.objects.filter(email_address=email)
+        return Token.objects.filter(email_address=email).order_by('-submission_date')
     
     def check_token_ready(token: str):
         TokenQueueService.find_token(token).check_state_ready()

@@ -10,11 +10,12 @@ ALLOWED_SPECIES = settings.ALLOWED_SPECIES
 
 def generate_random_alphanumeric(length) -> str:
     return secrets.token_urlsafe(length).replace("/","_").replace(" ", "").replace("\t", "")
+
 def safe_file_cmp(file_1, file_2):
     if (bool(file_1) and bool(file_2) and os.path.isfile(file_2.path) and os.path.isfile(file_1.path)):
         return filecmp.cmp(file_1.path, file_2.path)
     else:
-        return file_1 == file_2
+        return file_1.path.split("/")[-1] == file_2.path.split("/")[-1]
 
 
 class DnaTargetSites(models.Model):
@@ -95,6 +96,8 @@ class JobData(models.Model):
     
     base_path = models.CharField(max_length=64, blank=False, unique=True)
 
+    species = models.CharField(max_length=32, null=True, default=None, choices=ALLOWED_SPECIES)
+
     ssRNA_id = models.ForeignKey(LongestTranscript, on_delete=models.PROTECT, default=None, null=True)
     ssRNA_fasta = models.FileField(default=None, null=True)
 
@@ -119,11 +122,11 @@ class JobData(models.Model):
             #Check equality of ssRNA_fasta or ssRNA_id
             and (
                 (self.ssRNA_id is not None and other_job.ssRNA_id is not None and self.ssRNA_id==other_job.ssRNA_id) 
-                or (safe_file_cmp(job.ssRNA_fasta, other_job.ssRNA_fasta)))
+                or (safe_file_cmp(self.ssRNA_fasta, other_job.ssRNA_fasta)))
             #Check equality of species 
-            and (job.species == other.species)
+            and (self.species == other_job.species)
             #Check equality of dsDNA_precomputed_target
-            and (job.dsDNA_precomputed_target == other_job.dsDNA_precomputed_target)
+            and (self.dsDNA_precomputed_target == other_job.dsDNA_precomputed_target)
             )
 
     def __str__(self):

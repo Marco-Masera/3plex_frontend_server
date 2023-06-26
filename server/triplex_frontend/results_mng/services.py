@@ -32,6 +32,7 @@ class ResultsMngServices:
                 continue
             #Check they are actually equal
             if (other_job.semantic_equals(job)):
+                print("Cached")
                 return job
         return None 
 
@@ -175,10 +176,7 @@ class ResultsMngServices:
     def cleanup_old_jobs(cleanup_older_than):
         old_jobs = JobData.objects.filter(date__lte=cleanup_older_than, cleaned_up = False)
         for old_job in old_jobs:
-            if (old_job.state == "Ready" or old_job.state == "Created"):
-                old_job.state = "Expired"
-            elif (old_job.state == "Submitted"):
-                old_job.state = "Cancelled"
+            old_job.state = "Expired"
             old_job.delete_all_files()
             old_job.cleaned_up = True
             old_job.save()

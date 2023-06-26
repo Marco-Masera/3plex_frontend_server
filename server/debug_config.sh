@@ -21,7 +21,7 @@ export MEDIA_URL="3plex/results/"
 export CLIENT_URL="http://192.168.186.10:4201/"
 
 #Cleanup service
-export RUN_CLEANUP_EVERY_HOURS=12
+export RUN_CLEANUP_EVERY_HOURS=24
 export CLEANUP_AFTER_HOURS=168
 #Email config
 export EMAIL_USE_TLS=1
