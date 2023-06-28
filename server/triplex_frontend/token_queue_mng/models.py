@@ -20,6 +20,10 @@ class Token(models.Model):
         return f"{self.submission_date} - {self.job_name} - {self.token}"
 
     @property
+    def species(self):
+        return self.job.species
+
+    @property
     def state(self) -> str:
         return self.job.state
     @property
@@ -38,6 +42,7 @@ class Token(models.Model):
         dict_["token"] = self.token
         dict_["date"] =  self.submission_date.strftime("%d-%m-%Y %H:%M:%S")
         dict_["ssRNA_id"] = self.ssRNA_id
+        dict_["species"] = self.species
         return dict_
 
     def assert_state_ready(self):
