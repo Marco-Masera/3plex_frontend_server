@@ -30,10 +30,10 @@ class DnaTargetSites(models.Model):
 
     @property
     def dsDNA_path(self):
-        return f"{settings.MEDIA_ROOT_ABS_PATH}/ds_dna/{self.species}/{self.filename}"
+        return f"{settings.MEDIA_ROOT_ABS_PATH}/ds_dna/{self.species}/{self.filename}.fa"
     @property
     def dsDNA_url(self):
-        return f"/3plex/results/ds_dna/{self.species}/{self.filename}"
+        return f"/3plex/results/ds_dna/{self.species}/{self.filename}.fa"
 
 
 
