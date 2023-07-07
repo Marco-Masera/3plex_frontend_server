@@ -13,12 +13,16 @@ from rest_framework import parsers
 from triplex_frontend.triplex_exceptions import *
 from token_queue_mng.services import TokenQueueService
 from results_mng.services import ResultsMngServices
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication 
 
+class CsrfExemptSessionAuthentication(SessionAuthentication):
 
+    def enforce_csrf(self, request):
+        return  # To not perform the csrf check previously happening
 
 class SubmitjobController(APIView):
     parser_classes = [parsers.MultiPartParser] 
-
+    authentication_classes = (CsrfExemptSessionAuthentication, BasicAuthentication)
     def post(self, request, *args, **kwargs):
         tokenObject = None; jobData = None;
         try:

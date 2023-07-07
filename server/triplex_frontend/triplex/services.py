@@ -83,6 +83,7 @@ class TriplexService:
         files = {'ssRNA_fasta': ssRNA_fasta, 'dsDNA_fasta': dsDNA_fasta}
         triplex_tuples = [(key, triplex_params[key]) for key in triplex_params.keys()]
         try:
+            print(url)
             r = requests.post(url, files=files, data=triplex_tuples)
             if (r.status_code != 200):
                 print(f"Bad response: {r.content}")

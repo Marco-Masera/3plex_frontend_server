@@ -15,6 +15,7 @@
 
 ## Docs from Stabulario to be adapted
 
+
 ## Installation
 ### Creating the db volume:
 sudo docker volume create stabulario_db

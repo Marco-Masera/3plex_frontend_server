@@ -13,7 +13,7 @@ services:
   db:
     image: mysql:8.0.21
     ports:
-      - "30000:3306"
+      - "30001:3306"
     command: --init-file /data/application/init.sql
     environment:
       MYSQL_ROOT_PASSWORD: triplex
@@ -22,7 +22,7 @@ services:
       - ./db/script.sql:/data/application/init.sql
       - triplex_db:/var/lib/mysql
     cap_add:
-      - SYS_NICE  # CAP_SYS_NICE
+      - SYS_NICE  
 
 
   db-backup:
