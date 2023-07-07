@@ -23,6 +23,9 @@ ALLOWED_SPECIES = [
 
 #Constants:
 BACKEND_URL = getenv("BACKEND_SERVER_URL")
+PUBLIC_API_PATH = getenv("PUBLIC_API_PATH")
+PRIVATE_API_PATH = getenv("PRIVATE_API_PATH")
+ADMIN_PATH = getenv("ADMIN_PATH")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
@@ -167,7 +170,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = 'debug/admin/static/'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field

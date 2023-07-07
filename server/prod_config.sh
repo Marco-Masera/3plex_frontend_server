@@ -45,4 +45,4 @@ export DATABASE_NAME="triplex"
 export DATABASE_USERNAME="root"
 export DATABASE_PASSWORD="triplex"
 export DATABASE_HOST="db"
-export DATABASE_PORT=3307
+export DATABASE_PORT=30001
