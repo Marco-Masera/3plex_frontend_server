@@ -42,7 +42,7 @@ def get_repeats_by_transcript_id(transcript):
     exons = TranscriptExon.objects.filter(transcript_id=transcript_id).order_by('start')
     if (not exons or len(exons)==0):
         return []
-    repeats_file =  f"{settings.BASE_DIR}/static_data/{species}/repeats.bb"
+    repeats_file =  f"{settings.MEDIA_ROOT}/static_data/{species}/repeats.bb"
     repeats_file = pyBigWig.open(repeats_file)
     return genomic_intervalsToTranscript(exons, repeats_file, exons[0].strand)
 
@@ -50,7 +50,7 @@ def get_repeats_by_transcript_id(transcript):
 def get_conservation_by_transcript_id(transcript):
     transcript_id = transcript.id
     species = transcript.species
-    conservation_bw = f"{settings.BASE_DIR}/static_data/{species}/conservation.bw"
+    conservation_bw = f"{settings.MEDIA_ROOT}/static_data/{species}/conservation.bw"
 
     exons = TranscriptExon.objects.filter(transcript_id=transcript_id).order_by('start')
     if (not exons or len(exons)==0):
