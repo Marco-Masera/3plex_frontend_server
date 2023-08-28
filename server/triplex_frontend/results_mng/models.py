@@ -9,7 +9,7 @@ from django.db import IntegrityError
 ALLOWED_SPECIES = settings.ALLOWED_SPECIES
 
 def generate_random_alphanumeric(length) -> str:
-    return secrets.token_urlsafe(length).replace("/","_").replace(" ", "").replace("\t", "")
+    return secrets.token_urlsafe(length).replace("/","_").replace(" ", "").replace("\t", "").replace("-", "_")
 
 def safe_file_cmp(file_1, file_2):
     if (bool(file_1) and bool(file_2) and os.path.isfile(file_2.path) and os.path.isfile(file_1.path)):

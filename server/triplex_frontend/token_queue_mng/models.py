@@ -7,7 +7,7 @@ from results_mng.models import JobData
 from django.forms import model_to_dict
 
 def generate_random_alphanumeric(length) -> str:
-    return secrets.token_urlsafe(length).replace("/","_").replace(" ", "").replace("\t", "")
+    return secrets.token_urlsafe(length).replace("/","_").replace(" ", "").replace("\t", "").replace("-", "_")
 
 class Token(models.Model):
     token = models.CharField(max_length=64, blank=False, editable=False, unique=True, primary_key=True)
