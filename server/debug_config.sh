@@ -20,7 +20,7 @@ export SSRNA_HEADER="ssRNA"
 export FILE_UPLOAD_MAX_MEMORY_SIZE=4000000
 export DSDNA_MAX_SIZE=3000000000
 export SSRNA_MAX_SIZE=2000000
-export MEDIA_ROOT="/home/marco.masera/3plex_media_root"
+export MEDIA_ROOT="/home/mamasera/3plex_media_root"
 export MEDIA_URL="debug/3plex/results/"
 export CLIENT_URL="http://192.168.99.164:80/"
 
