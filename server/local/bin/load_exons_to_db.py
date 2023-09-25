@@ -6,7 +6,7 @@ from optparse import OptionParser
 from sys import argv
 
 DB_HOST = "127.0.0.1"
-DB_PORT = 30000
+DB_PORT = 30001
 DB_USER = "root"
 DB_PSW = "triplex"
 DB_NAME = "triplex"

@@ -17,7 +17,6 @@ def genomic_intervalsToTranscript(exons, bb, strand):
     repeats = []
     intervals = []
     converted = []
-    print(f"Len exons: {len(exons)}")
     for exon in exons:
         repeats_intersected = bb.entries(exon.chr, exon.start, exon.end)
         if (repeats_intersected is not None):
