@@ -1,24 +1,10 @@
 # 3plex_frontend_server
 
-## Usage outside of docker
-* Enter in server directory
-* Load environment variables
-* * source debug_env_variables.sh
-* Create virtual environment
-* * python3 -m venv env
-* Activate virtual env
-* * source env/bin/activate
-* Install requirements into environment
-* * python3 -m pip install -r requirements.txt
-
-
-
-## Docs from Stabulario to be adapted
-
+## Docs from Stabulario to be adapted - work in progress
 
 ## Installation
 ### Creating the db volume:
-sudo docker volume create stabulario_db
+sudo docker volume create triplex_db
 
 ### Changing environment
 * Environment variables for server config are set inside docker-compose.yml
@@ -54,7 +40,7 @@ It is possible to launch the software outside of the docker container for debug 
 * * docker compose up -d db
 * Enter in the stabulario subfolder
 * Load environment variables
-* * source debug_env_variables.sh
+* * source debug_config.sh
 * Create virtual environment
 * * python3 -m venv env
 * Activate virtual env
