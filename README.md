@@ -21,7 +21,7 @@ To open a shell inside the running server's container use:
 To close it:
 * exit
 Similarly, db shell can be accessed:
-* mysql --host=127.0.0.1 --port=30000 -u root -p
+* mysql --host=127.0.0.1 --port=30001 -u root -p
 
 ## Backup and restore data
 ### Backing up database

@@ -27,7 +27,8 @@ class SubmitjobController(APIView):
         tokenObject = None; jobData = None;
         try:
             #Parse request parameters
-            ssRNA_fasta, dsDNA_fasta, dsDNA_bed, dsDNA_precomputed, species, ssRNA_id, email, jobName = TriplexService.parse_request_params(request)
+            ssRNA_fasta, dsDNA_fasta, dsDNA_bed, dsDNA_precomputed, species, ssRNA_id, email, jobName, use_randomization = TriplexService.parse_request_params(request)
+            print(use_randomization)
             #Validate and rename ssRNA_fasta
             ssRNA_fasta = TriplexService.validate_and_rename_ssRNA_fasta(ssRNA_fasta)
             #Validate and rename dsDNA file(s)
@@ -38,7 +39,8 @@ class SubmitjobController(APIView):
             TriplexService.validate_triplex_params(triplex_params)
 
             #Initialize data section to receive results
-            jobData = ResultsMngServices.initialize_or_retrieve_data_section(ssRNA_fasta, dsDNA_file, dsDNA_precomputed, triplex_params, ssRNA_id, species)
+            jobData = ResultsMngServices.initialize_or_retrieve_data_section(ssRNA_fasta, dsDNA_file, dsDNA_precomputed, 
+                triplex_params, ssRNA_id, species, use_randomization=use_randomization)
             #If the ssRNA is specified by ID, open the corresponding file
             if (ssRNA_fasta is None):
                 ssRNA_fasta = open(jobData.ssRNA_id.ssRNA_fasta_path, 'rb')
@@ -50,7 +52,7 @@ class SubmitjobController(APIView):
             if (tokenObject.state == "Created"):
                 #Todo se Id invece di ssRNA
                 ResultsMngServices.set_job_submitted(jobData)
-                TriplexService.submit_job(ssRNA_fasta, dsDNA_file, dsDNA_precomputed, tokenObject.token, triplex_params, species)
+                TriplexService.submit_job(ssRNA_fasta, dsDNA_file, dsDNA_precomputed, tokenObject.token, triplex_params, species, use_randomization)
             else:
                 TokenQueueService.notify_user_email_job_completed(tokenObject)
             return Responses.success({"token": tokenObject})
