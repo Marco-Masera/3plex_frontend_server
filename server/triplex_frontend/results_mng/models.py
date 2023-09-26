@@ -91,6 +91,8 @@ class JobData(models.Model):
     state = models.CharField(max_length=16, choices = state_choices, default = "Created")
     hash_code = models.CharField(max_length=128)
 
+    use_random = models.BooleanField(default=False)
+
     date = models.DateTimeField(auto_now_add=True, auto_now=False)
     triplex_params = models.JSONField()
     
@@ -107,6 +109,7 @@ class JobData(models.Model):
     stability = models.FileField(default=None, null=True)
     summary = models.FileField(default=None, null=True)
     profile = models.FileField(default=None, null=True)
+    profile_random = models.FileField(default=None, null=True)
     secondary_structure = models.FileField(default=None, null=True)
     rawLogsSTDOUT = models.FileField(default=None, null=True)
     rawLogsSTDERR = models.FileField(default=None, null=True)
@@ -127,6 +130,8 @@ class JobData(models.Model):
             and (self.species == other_job.species)
             #Check equality of dsDNA_precomputed_target
             and (self.dsDNA_precomputed_target == other_job.dsDNA_precomputed_target)
+            #Check equality of use_random field
+            and (self.use_random == other_job.use_random)
             )
 
     def __str__(self):
@@ -162,6 +167,10 @@ class JobData(models.Model):
             if os.path.isfile(self.profile.path):
                 dir_ = self.profile.path
                 os.remove(self.profile.path)
+        if self.profile_random and self.profile_random.path:
+            if os.path.isfile(self.profile_random.path):
+                dir_ = self.profile_random.path
+                os.remove(self.profile_random.path)
         if self.secondary_structure and self.secondary_structure.path:
             if os.path.isfile(self.secondary_structure.path):
                 dir_ = self.secondary_structure.path

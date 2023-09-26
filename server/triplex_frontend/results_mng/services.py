@@ -36,9 +36,9 @@ class ResultsMngServices:
                 return job
         return None 
 
-    def initialize_or_retrieve_data_section(ssRNA_fasta, dsDNA_fasta, dsDNA_precomputed, triplex_params, ssRNA_id = None, species = None):
+    def initialize_or_retrieve_data_section(ssRNA_fasta, dsDNA_fasta, dsDNA_precomputed, triplex_params, ssRNA_id = None, species = None, use_randomization=False):
         #Compute hash value of input data
-        hashed = get_hash([ssRNA_fasta,dsDNA_fasta], [triplex_params, {"id":ssRNA_id, "species": species, "dsDNA_precomputed":dsDNA_precomputed}])
+        hashed = get_hash([ssRNA_fasta,dsDNA_fasta], [triplex_params, {"id":ssRNA_id, "species": species, "dsDNA_precomputed":dsDNA_precomputed, "randomization": use_randomization}])
         #initialize new data section, keep track of sequence and id, used later for computing the conservation
         job = JobData()
         job.hash_code = hashed
@@ -62,6 +62,7 @@ class ResultsMngServices:
             targetSites = DnaTargetSites.objects.get(name=dsDNA_precomputed)
             job.dsDNA_precomputed_target = targetSites
         job.species = species
+        job.use_random = use_randomization
         job.save()
         #Check if there is a viable job already submitted
         existingJob = ResultsMngServices.find_job_with_equal_input(hashed, job)
@@ -71,7 +72,7 @@ class ResultsMngServices:
             return existingJob
         return job
     
-    def receive_data(token: str, stability, summary, profile, secondary_struct) -> JobData:
+    def receive_data(token: str, stability, summary, profile, secondary_struct, profile_random) -> JobData:
         #Note: data must be initialized or this will return DataDoesNotExistException
         tokenObject = TokenQueueService.find_token(token)
         data = tokenObject.job
@@ -85,6 +86,9 @@ class ResultsMngServices:
         data.summary.name = f"jobs/{data.base_path}/{data.summary.name}"
         data.profile = profile
         data.profile.name = f"jobs/{data.base_path}/{data.profile.name}"
+        if (profile_random):
+            data.profile_random = profile_random
+            data.profile_random.name = f"jobs/{data.base_path}/{data.profile_random.name}"
         data.secondary_structure = secondary_struct
         data.secondary_structure.name = f"jobs/{data.base_path}/{data.secondary_structure.name}"
         data.state = "Ready"
@@ -126,8 +130,9 @@ class ResultsMngServices:
                 sequence = file.read()
                 sequence = ''.join(sequence.splitlines(keepends=False)[1:])
                 available["sequence"] = sequence
-        #Read and return file withput header
-        
+        #Profile rand
+        if (data.profile_random is not None and bool(data.profile_random)):
+            available["statistics"] = data.profile_random.url
         
         return available
     

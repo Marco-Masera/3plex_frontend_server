@@ -12,6 +12,7 @@ DSDNA_FASTA = "DSDNA_FASTA" #Fasta file as dsDNA input
 SSRNA_ID = "SSRNA_ID" #Id of the transcript
 DSDNA_COORD_BED = "DSDNA_COORD_BED" #Bed file with coordinates
 DSDNA_TARGET_NAME = "DSDNA_TARGET_NAME"
+USE_RAND = "USE_RAND"
 #Input for extra params
 NAME_FIELD = "JOBNAME"
 EMAIL_FIELD = "EMAIL"
@@ -68,7 +69,7 @@ class TriplexService:
             if (bounds[1] is not None and bounds[1] < value):
                 raise TriplexParamOutOfBound(f"3plex param {param} is set to {params[param]} but its upper limit is {bounds[1]}")
 
-    def submit_job(ssRNA_fasta, dsDNA_fasta, dsDNA_precomputed, token: str, triplex_params, species):
+    def submit_job(ssRNA_fasta, dsDNA_fasta, dsDNA_precomputed, token: str, triplex_params, species, use_randomization=False):
         ssRNA_fasta.seek(0)
         if (dsDNA_fasta):
             dsDNA_fasta.seek(0)
@@ -78,6 +79,8 @@ class TriplexService:
             query_params.append(f"species={species}")
         if (dsDNA_precomputed is not None):
             query_params.append(f"dsdna_target={dsDNA_precomputed}")
+        if (use_randomization):
+            query_params.append(f"use_random={use_randomization}")
         if (len(query_params)>0):
             url = f"{url}?{ '&'.join(query_params) }"
         files = {'ssRNA_fasta': ssRNA_fasta, 'dsDNA_fasta': dsDNA_fasta}
@@ -158,6 +161,11 @@ class TriplexService:
             dsDNA_precomputed = request.data[DSDNA_TARGET_NAME]
         else:
             raise DsDnaNotProvidedException()
+        #Check randomization
+        if (USE_RAND in request.data and request.data[USE_RAND]=="true"):
+            use_randomization = True
+        else:
+            use_randomization = False
         #Check extra field
         if (EMAIL_FIELD in request.data):
             email = request.data[EMAIL_FIELD]
@@ -172,7 +180,7 @@ class TriplexService:
             if (not (species,species) in  settings.ALLOWED_SPECIES):
                 raise SpeciesNotSupportedException()
         
-        return ssRNA_fasta, dsDNA_fasta, dsDNA_bed, dsDNA_precomputed, species, ssRNA_id, email, jobName
+        return ssRNA_fasta, dsDNA_fasta, dsDNA_bed, dsDNA_precomputed, species, ssRNA_id, email, jobName, use_randomization
 
     def validate_and_rename_ssRNA_fasta(ssRNA_fasta):
         if (ssRNA_fasta is not None):
