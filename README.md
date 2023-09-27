@@ -31,7 +31,7 @@ Similarly, db shell can be accessed:
 
 ### Restoring database
 * **Stop the service before restoring the backup**.
-* Place the backup file *stabulario_db.tar.bz2* inside the ./backup directory
+* Place the backup file *triplex_db.tar.bz2* inside the ./backup directory
 * Run sudo docker-compose run --rm db-restore
 
 ## Usage in debug mode - outside docker
