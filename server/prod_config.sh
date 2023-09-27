@@ -10,6 +10,10 @@ export HMAC_KEY="YOU_WISH_YOU_KNEW_MY_SECRET_KEY!"
 export DEBUG=0
 export ALLOWED_HOSTS="192.168.99.164,www.3plex.unito.it,3plex.unito.it"
 
+export PUBLIC_API_PATH="api/"
+export PRIVATE_API_PATH="results/"
+export ADMIN_PATH="admin/"
+
 #File management config
 export SSRNA_BASE_NAME="ssRNA.fa" #all ssRNA.fa file will be renamed to this
 export DSDNA_BASE_NAME="dsDNA.fa" #same with dsDNA_fasta

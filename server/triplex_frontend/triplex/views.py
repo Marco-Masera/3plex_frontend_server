@@ -53,7 +53,7 @@ class SubmitjobController(APIView):
                 #Todo se Id invece di ssRNA
                 ResultsMngServices.set_job_submitted(jobData)
                 TriplexService.submit_job(ssRNA_fasta, dsDNA_file, dsDNA_precomputed, tokenObject.token, triplex_params, species, use_randomization)
-            else:
+            elif (tokenObject.state == "Ready"):
                 TokenQueueService.notify_user_email_job_completed(tokenObject)
             return Responses.success({"token": tokenObject})
         except TriplexException as e:

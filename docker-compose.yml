@@ -34,7 +34,7 @@ services:
     volumes:
       - ./backup:/backup
       - triplex_db:/volume
-    command: sh -c "tar -cjf /backup/$${TARGET}.tar.bz2 -C /volume ./"
+    command: sh -c "tar -cjf /backup/$${TARGET}.tar.bz2 -C /volume ./ ; echo backup_finished"
 
   db-restore:
     profiles: ["cli-only"]
@@ -44,7 +44,7 @@ services:
     volumes:
       - ./backup:/backup
       - triplex_db:/volume
-    command: sh -c "rm -rf /volume/* /volume/..?* /volume/.[!.]* ; tar -C /volume/ -xjf /backup/$${SOURCE}.tar.bz2"
+    command: sh -c "rm -rf /volume/* /volume/..?* /volume/.[!.]* ; tar -C /volume/ -xjf /backup/$${SOURCE}.tar.bz2 ; echo db_restored"
 
 volumes:
   triplex_db:
