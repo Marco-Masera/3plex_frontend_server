@@ -23,9 +23,9 @@ export SSRNA_HEADER="ssRNA"
 export FILE_UPLOAD_MAX_MEMORY_SIZE=4000000
 export DSDNA_MAX_SIZE=3000000000
 export SSRNA_MAX_SIZE=2000000
-export MEDIA_ROOT="media_root"
+export MEDIA_ROOT="/home/mamasera/3plex_media_root"
 export MEDIA_URL="3plex/results/"
-export CLIENT_URL="http://192.168.186.10:4201/"
+export CLIENT_URL="https:www.3plex.unito.it/"
 
 #Cleanup service
 export RUN_CLEANUP_EVERY_HOURS=24
@@ -49,4 +49,4 @@ export DATABASE_NAME="triplex"
 export DATABASE_USERNAME="root"
 export DATABASE_PASSWORD="triplex"
 export DATABASE_HOST="db"
-export DATABASE_PORT=30001
+export DATABASE_PORT=3306
