@@ -37,7 +37,7 @@ SECRET_KEY = getenv("DJANGO_SECURE_KEY")
 HMAC_KEY = getenv("HMAC_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = bool(getenv("DEBUG"))
+DEBUG = bool(getenv("DEBUG")==1 or getenv("DEBUG")=='1')
 ALLOWED_HOSTS = getenv('ALLOWED_HOSTS').split(',')
 
 #App parameters (possibly to be moved to env variables on deploy..?)
