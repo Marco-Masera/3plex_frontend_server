@@ -4,7 +4,7 @@
 export BACKEND_SERVER_URL='http://192.168.186.10:5000'
 export DJANGO_SECURE_KEY='django-insecure-&0o*(s9@=kl=)_*+^^#g4(d-aynnwwyci(642zg52lqi7y4#zv'
 export HMAC_KEY="YOU_WISH_YOU_KNEW_MY_SECRET_KEY!"
-export DEBUG=0
+export DEBUG=1
 export ALLOWED_HOSTS="192.168.99.164,www.3plex.unito.it,3plex.unito.it,localhost"
 
 export PUBLIC_API_PATH="debug/api/"
