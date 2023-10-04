@@ -81,12 +81,12 @@ class TriplexService:
             query_params.append(f"dsdna_target={dsDNA_precomputed}")
         if (use_randomization):
             query_params.append(f"use_random={use_randomization}")
+        query_params.append(f"debug={settings.DEBUG}")
         if (len(query_params)>0):
             url = f"{url}?{ '&'.join(query_params) }"
         files = {'ssRNA_fasta': ssRNA_fasta, 'dsDNA_fasta': dsDNA_fasta}
         triplex_tuples = [(key, triplex_params[key]) for key in triplex_params.keys()]
         try:
-            print(url)
             r = requests.post(url, files=files, data=triplex_tuples)
             if (r.status_code != 200):
                 print(f"Bad response: {r.content}")
