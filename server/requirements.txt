@@ -2,7 +2,7 @@ numpy
 pandas
 asgiref==3.6.0
 certifi==2023.5.7
-cffi==1.15.1
+cffi
 charset-normalizer==3.1.0
 cryptography==40.0.2
 defusedxml==0.7.1
@@ -12,7 +12,8 @@ django-cors-headers==4.0.0
 django-su==1.0.0
 djangorestframework==3.14.0
 et-xmlfile==1.1.0
-gunicorn==19.9.0
+six
+gunicorn==21.2.0
 idna==3.4
 mysqlclient
 oauthlib==3.2.2

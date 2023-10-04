@@ -17,7 +17,7 @@ sudo docker volume create triplex_db
 
 ### Accessing shell to running server and db
 To open a shell inside the running server's container use:
-* sudo docker exec -ti stabulario-app-1 /bin/sh
+* sudo docker exec -ti 3plex_frontend_server-app-1 /bin/sh
 To close it:
 * exit
 Similarly, db shell can be accessed:
