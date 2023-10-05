@@ -25,7 +25,7 @@ export DSDNA_MAX_SIZE=3000000000
 export SSRNA_MAX_SIZE=2000000
 export MEDIA_ROOT="/home/mamasera/3plex_media_root"
 export MEDIA_URL="3plex/results/"
-export CLIENT_URL="https:www.3plex.unito.it/"
+export CLIENT_URL="https://www.3plex.unito.it/"
 
 #Cleanup service
 export RUN_CLEANUP_EVERY_HOURS=24
