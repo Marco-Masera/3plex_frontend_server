@@ -36,6 +36,7 @@ export EMAIL_PORT=587
 
 #Admin
 export ADMINS="Marco,marco.masera@unito.it;Altro_Admin,altro_admin_mail@unito.it"
+export ADMIN_STATIC="debug/admin/static/"
 
 # Application definition
 export CORS_ALLOW_ALL_ORIGINS=1
