@@ -69,6 +69,7 @@ EMAIL_HOST_PASSWORD = getenv("EMAIL_HOST_PASSWORD")
 EMAIL_PORT = int(getenv("EMAIL_PORT"))
 #Admin
 ADMINS = [ (elem.split(",")[0], elem.split(",")[1]) for elem in getenv("ADMINS").split(";")]
+CSRF_TRUSTED_ORIGINS = ['https://*.3plex.unito.it','https://*.127.0.0.1']
 
 # Application definition
 CORS_ALLOW_ALL_ORIGINS = bool(getenv("CORS_ALLOW_ALL_ORIGINS"))
