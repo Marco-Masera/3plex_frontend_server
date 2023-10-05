@@ -68,6 +68,7 @@ EMAIL_HOST_USER = getenv("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = getenv("EMAIL_HOST_PASSWORD")
 EMAIL_PORT = int(getenv("EMAIL_PORT"))
 #Admin
+
 ADMINS = [ (elem.split(",")[0], elem.split(",")[1]) for elem in getenv("ADMINS").split(";")]
 
 # Application definition
