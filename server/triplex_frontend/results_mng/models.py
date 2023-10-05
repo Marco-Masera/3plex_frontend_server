@@ -135,7 +135,7 @@ class JobData(models.Model):
             )
 
     def __str__(self):
-        return f"{self.date} - {self.state}"
+        return f"{self.date} - {self.state} - {self.hash_code}"
 
     def delete_all_files(self):
         dir_ = None
