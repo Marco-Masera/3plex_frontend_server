@@ -36,7 +36,7 @@ class ResultsMngServices:
                 return job
         return None 
 
-    def initialize_or_retrieve_data_section(ssRNA_fasta, dsDNA_fasta, dsDNA_precomputed, triplex_params, ssRNA_id = None, species = None, use_randomization=False):
+    def initialize_or_retrieve_data_section(ssRNA_fasta, dsDNA_fasta, dsDNA_precomputed, triplex_params, ssRNA_id = None, species = None, use_randomization=0):
         #Compute hash value of input data
         hashed = get_hash([ssRNA_fasta,dsDNA_fasta], [triplex_params, {"id":ssRNA_id, "species": species, "dsDNA_precomputed":dsDNA_precomputed, "randomization": use_randomization}])
         #initialize new data section, keep track of sequence and id, used later for computing the conservation

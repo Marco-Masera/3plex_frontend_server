@@ -20,6 +20,10 @@ ALLOWED_SPECIES = [
         ("hsapiens", "hsapiens"),
         ("mmusculus","mmusculus")
 ]
+#Allowed randomization iterations
+ALLOWED_RANDOMIZATION_ITERATIONS = [
+    10, 100, 500, 1000
+]
 
 #Constants:
 BACKEND_URL = getenv("BACKEND_SERVER_URL")
@@ -38,8 +42,6 @@ HMAC_KEY = getenv("HMAC_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = bool(getenv("DEBUG")==1 or getenv("DEBUG")=='1')
-print(DEBUG)
-print(getenv("DEBUG"))
 ALLOWED_HOSTS = getenv('ALLOWED_HOSTS').split(',')
 
 #App parameters (possibly to be moved to env variables on deploy..?)

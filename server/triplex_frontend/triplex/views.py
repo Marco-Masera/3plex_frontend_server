@@ -28,7 +28,6 @@ class SubmitjobController(APIView):
         try:
             #Parse request parameters
             ssRNA_fasta, dsDNA_fasta, dsDNA_bed, dsDNA_precomputed, species, ssRNA_id, email, jobName, use_randomization = TriplexService.parse_request_params(request)
-            print(use_randomization)
             #Validate and rename ssRNA_fasta
             ssRNA_fasta = TriplexService.validate_and_rename_ssRNA_fasta(ssRNA_fasta)
             #Validate and rename dsDNA file(s)
@@ -141,6 +140,9 @@ class VisualsController(APIView):
 class GetAllowedSpecies(APIView):
     def get(self, request, *args, **kwargs):
         try:
-            return Responses.success([species[0] for species in settings.ALLOWED_SPECIES])
+            return Responses.success({
+                "species": [species[0] for species in settings.ALLOWED_SPECIES],
+                "iterations":  settings.ALLOWED_RANDOMIZATION_ITERATIONS
+                })
         except TriplexException as e:
             return e.handle()

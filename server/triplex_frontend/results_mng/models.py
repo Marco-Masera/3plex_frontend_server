@@ -91,7 +91,7 @@ class JobData(models.Model):
     state = models.CharField(max_length=16, choices = state_choices, default = "Created")
     hash_code = models.CharField(max_length=128)
 
-    use_random = models.BooleanField(default=False)
+    use_random = models.IntegerField(default=0)
 
     date = models.DateTimeField(auto_now_add=True, auto_now=False)
     triplex_params = models.JSONField()
