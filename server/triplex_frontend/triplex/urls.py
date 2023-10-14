@@ -7,7 +7,7 @@ urlpatterns = [
     path('3plex_default_params', TriplexDefaultParams.as_view()),
     path('checkjob/<str:token>', CheckjobController.as_view()),
     path('checkjobs/email/<str:email>', CheckjobsByEmailController.as_view()),
-    path('system_allowed_species', GetAllowedSpecies.as_view()),
+    path('system_allowed_species_and_iterations', GetAllowedSpecies.as_view()),
     path('search/transcripts/<str:species>/<str:query>', TranscriptsNamesSearchApi.as_view()),
     path('dnatargetsites', GetDnaTargetSitesApi.as_view()),
     path('data_for_visuals/<str:token>', VisualsController.as_view()),
