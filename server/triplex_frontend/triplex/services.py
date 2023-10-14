@@ -3,7 +3,7 @@ from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUpload
 from django.conf import settings
 import requests
 from io import StringIO
-from triplex_frontend.triplex_exceptions import CannotSubmitToBackendException, TriplexParamOutOfBound
+from triplex_frontend.triplex_exceptions import *
 
 #Input body as key-value form-data with keys:
 SSRNA_FASTA = "SSRNA_FASTA" #Fasta file as ssRNA input
@@ -69,7 +69,7 @@ class TriplexService:
             if (bounds[1] is not None and bounds[1] < value):
                 raise TriplexParamOutOfBound(f"3plex param {param} is set to {params[param]} but its upper limit is {bounds[1]}")
 
-    def submit_job(ssRNA_fasta, dsDNA_fasta, dsDNA_precomputed, token: str, triplex_params, species, use_randomization=False):
+    def submit_job(ssRNA_fasta, dsDNA_fasta, dsDNA_precomputed, token: str, triplex_params, species, use_randomization=0):
         ssRNA_fasta.seek(0)
         if (dsDNA_fasta):
             dsDNA_fasta.seek(0)
@@ -162,10 +162,14 @@ class TriplexService:
         else:
             raise DsDnaNotProvidedException()
         #Check randomization
-        if (USE_RAND in request.data and request.data[USE_RAND]=="true"):
-            use_randomization = True
+        if (USE_RAND in request.data):
+            use_randomization = request.data[USE_RAND]
+            print(use_randomization)
+            print(settings.ALLOWED_RANDOMIZATION_ITERATIONS)
+            if (not int(use_randomization) in settings.ALLOWED_RANDOMIZATION_ITERATIONS):
+                raise NumIterationsNotAllowed()
         else:
-            use_randomization = False
+            use_randomization = 0
         #Check extra field
         if (EMAIL_FIELD in request.data):
             email = request.data[EMAIL_FIELD]

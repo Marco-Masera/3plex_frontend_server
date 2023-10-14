@@ -38,6 +38,12 @@ class SpeciesNotSupportedException(TriplexException):
             message="The provided species is not supported.",
             errorCode= status.HTTP_400_BAD_REQUEST)
 
+class NumIterationsNotAllowed(TriplexException):
+    def handle(self):
+        return Responses.generic_failure(
+            message="The provided number of iterations is not allowed.",
+            errorCode= status.HTTP_400_BAD_REQUEST)
+
 class CannotSubmitToBackendException(TriplexException):
     def handle(self):
         return Responses.generic_failure(message="Cannot submit job right now - backend server unavailable.")

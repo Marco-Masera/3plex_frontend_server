@@ -44,7 +44,7 @@ load_repeats_in_server: repeat_rmsk.clean_chr.sorted.noscore.bb
 phastCons30way.bw: $(GENCODE_REFENRECE_DATA)phastCons30way.bw
 	cp $< $@
 load_conservation_in_server: phastCons30way.bw
-	cp phastCons30way.bw  {settings.MEDIA_ROOT}/static_data/hsapiens/conservation.bw
+	cp phastCons30way.bw  ${MEDIA_ROOT}/static_data/hsapiens/conservation.bw
 
 #dsDNA
 MANE.GRCh38.v1.1.refseq_genomic.Symbol.tss.1500_500.fa: $(GENCODE_REFENRECE_DATA)MANE.GRCh38.v1.1.refseq_genomic.Symbol.tss.1500_500.fa
