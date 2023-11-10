@@ -72,7 +72,7 @@ class ResultsMngServices:
             return existingJob
         return job
     
-    def receive_data(token: str, stability, summary, profile, secondary_struct, profile_random) -> JobData:
+    def receive_data(token: str, stability, summary, profile, secondary_struct, profile_random, stability_indexed, stability_indexes) -> JobData:
         #Note: data must be initialized or this will return DataDoesNotExistException
         tokenObject = TokenQueueService.find_token(token)
         data = tokenObject.job
@@ -84,6 +84,11 @@ class ResultsMngServices:
         data.summary = summary
         data.stability.name = f"jobs/{data.base_path}/{data.stability.name}"
         data.summary.name = f"jobs/{data.base_path}/{data.summary.name}"
+        data.stability_indexed = stability_indexed
+        data.stability_indexes = stability_indexes
+        data.stability_indexed.name = f"jobs/{data.base_path}/{data.stability_indexed.name}"
+        data.stability_indexes.name = f"jobs/{data.base_path}/{data.stability_indexes.name}"
+        
         data.profile = profile
         data.profile.name = f"jobs/{data.base_path}/{data.profile.name}"
         if (profile_random):

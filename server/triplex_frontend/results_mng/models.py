@@ -107,6 +107,8 @@ class JobData(models.Model):
     dsDNA_precomputed_target = models.ForeignKey(DnaTargetSites, null=True, default=None, on_delete=models.PROTECT)
 
     stability = models.FileField(default=None, null=True)
+    stability_indexed = models.FileField(default=None, null=True)
+    stability_indexes = models.FileField(default=None, null=True)
     summary = models.FileField(default=None, null=True)
     profile = models.FileField(default=None, null=True)
     profile_random = models.FileField(default=None, null=True)
@@ -175,6 +177,14 @@ class JobData(models.Model):
             if os.path.isfile(self.secondary_structure.path):
                 dir_ = self.secondary_structure.path
                 os.remove(self.secondary_structure.path)
+        if self.stability_indexes and self.stability_indexes.path:
+            if os.path.isfile(self.stability_indexes.path):
+                dir_ = self.stability_indexes.path
+                os.remove(self.stability_indexes.path)
+        if self.stability_indexed and self.stability_indexed.path:
+            if os.path.isfile(self.stability_indexed.path):
+                dir_ = self.stability_indexed.path
+                os.remove(self.stability_indexed.path)
         if (dir_ is not None and len(dir_)>0):
             dir_ = os.path.dirname(os.path.join(settings.MEDIA_ROOT, str(dir_)))
             if (os.path.isdir(dir_)):

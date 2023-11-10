@@ -14,6 +14,7 @@ from triplex_frontend.triplex_exceptions import *
 from token_queue_mng.services import TokenQueueService
 from results_mng.services import ResultsMngServices
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication 
+from visualization.visualization_utils import find_tpx_in_interval
 
 class CsrfExemptSessionAuthentication(SessionAuthentication):
 
@@ -75,6 +76,16 @@ class SubmitjobController(APIView):
             raise e
 
 
+class JobMailController(APIView):
+    def post(self, request, *args, **kwargs):
+        try:
+            token = kwargs.get("token")
+            mail = kwargs.get("mail")
+            TokenQueueService.update_token_email(token, mail)
+            return Responses.success({"ciao":10})
+        except TriplexException as e:
+            return e.handle()
+
 class CheckjobController(APIView):
     def get(self, request, *args, **kwargs):
         try:
@@ -134,6 +145,21 @@ class VisualsController(APIView):
             ResultsMngServices.update_data_last_date(token)
             
             return Responses.success({"job": token_object, "available": data})
+        except TriplexException as e:
+            return e.handle()
+
+class TTS_Sites_Controller(APIView):
+    def get(self, request, *args, **kwargs):
+        try:
+            token = kwargs.get("token")
+            start = int(kwargs.get("start"))
+            end = int(kwargs.get("end"))
+            stability = float(kwargs.get("stability"))
+            #Retrieve job data
+            data = ResultsMngServices.get_by_token(token)
+            values = find_tpx_in_interval(data, start, end, stability)
+            ResultsMngServices.update_data_last_date(token)
+            return Responses.success({"data": values})
         except TriplexException as e:
             return e.handle()
 

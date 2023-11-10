@@ -16,6 +16,11 @@ class TokenQueueService:
         except ObjectDoesNotExist:
             raise TokenDoesNotExistException()
 
+    def update_token_email(token: str, email: str):
+        token_obj = TokenQueueService.find_token(token)
+        token_obj.email_address = email 
+        token_obj.save()
+
     def get_tokens_by_email(email):
         return Token.objects.filter(email_address=email).order_by('-submission_date')
     
