@@ -5,6 +5,7 @@ from django.conf import settings
 from results_mng.models import TranscriptExon
 import numpy as np
 from visualization import genomeToTranscriptMapper as gttm
+import tabix
 
 """
     Timing test for conservation:
@@ -12,6 +13,27 @@ from visualization import genomeToTranscriptMapper as gttm
         Load bw: --- 0.0004329681396484375 seconds ---
         Produce result: --- 0.002649068832397461 seconds ---
 """
+
+""".META: *.tpx.stability.gz *.tpx.stability
+	1	ssRNA
+	2	TFO_start
+	3	TFO_end
+	4	Duplex_ID
+	5	TTS_start
+	6	TTS_end
+	7	Score
+	8	Error_rate
+	9	Errors
+	10	Motif
+	11	Strand
+	12	Orientation
+	13	Guanine_rate
+	14	Stability"""
+
+def find_tpx_in_interval(jobData, start, end, stability_th):
+    tb = tabix.open(jobData.stability_indexed.path)
+    records = tb.query("ssRNA", start, end)
+    records = [record for record in records if float(record[13]) >= stability_th]
 
 def genomic_intervalsToTranscript(exons, bb, strand):
     repeats = []
