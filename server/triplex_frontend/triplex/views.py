@@ -33,6 +33,7 @@ class SubmitjobController(APIView):
             ssRNA_fasta = TriplexService.validate_and_rename_ssRNA_fasta(ssRNA_fasta)
             #Validate and rename dsDNA file(s)
             dsDNA_file = TriplexService.validate_and_rename_dsDNA(dsDNA_fasta, dsDNA_bed, species)
+            is_bed_dsDNA = dsDNA_bed is not None
             #Format triplex_params
             triplex_params = TriplexService.parse_3plex_params(request.data)
             #Validate them 
@@ -50,9 +51,8 @@ class SubmitjobController(APIView):
             tokenObject = TokenQueueService.get_new_token(name=jobName, email=email, jobData=jobData)
             #Submit job to backend server
             if (tokenObject.state == "Created"):
-                #Todo se Id invece di ssRNA
                 ResultsMngServices.set_job_submitted(jobData)
-                TriplexService.submit_job(ssRNA_fasta, dsDNA_file, dsDNA_precomputed, tokenObject.token, triplex_params, species, use_randomization)
+                TriplexService.submit_job(ssRNA_fasta, dsDNA_file, dsDNA_precomputed, tokenObject.token, triplex_params, species, use_randomization, is_bed=is_bed_dsDNA)
             elif (tokenObject.state == "Ready"):
                 TokenQueueService.notify_user_email_job_completed(tokenObject)
             return Responses.success({"token": tokenObject})
@@ -82,7 +82,7 @@ class JobMailController(APIView):
             token = kwargs.get("token")
             mail = kwargs.get("mail")
             TokenQueueService.update_token_email(token, mail)
-            return Responses.success({"ciao":10})
+            return Responses.success(None)
         except TriplexException as e:
             return e.handle()
 
@@ -170,5 +170,23 @@ class GetAllowedSpecies(APIView):
                 "species": [species[0] for species in settings.ALLOWED_SPECIES],
                 "iterations":  settings.ALLOWED_RANDOMIZATION_ITERATIONS
                 })
+        except TriplexException as e:
+            return e.handle()
+
+class DBD_Controller(APIView):
+    parser_classes = (parsers.MultiPartParser,)
+    def get(self, request, *args, **kwargs):
+        try:
+            token = TokenQueueService.find_token(kwargs.get("token"))
+            dbds = TokenQueueService.get_dbds(token)
+            return Responses.success(dbds)
+        except TriplexException as e:
+            return e.handle()
+    
+    def post(self, request, *args, **kwargs):
+        try:
+            token = TokenQueueService.find_token(kwargs.get("token"))
+            TokenQueueService.set_dbds(token, json.loads(request.data["dbds"]))
+            return Responses.success(None)
         except TriplexException as e:
             return e.handle()
