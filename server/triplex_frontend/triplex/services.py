@@ -69,7 +69,7 @@ class TriplexService:
             if (bounds[1] is not None and bounds[1] < value):
                 raise TriplexParamOutOfBound(f"3plex param {param} is set to {params[param]} but its upper limit is {bounds[1]}")
 
-    def submit_job(ssRNA_fasta, dsDNA_fasta, dsDNA_precomputed, token: str, triplex_params, species, use_randomization=0):
+    def submit_job(ssRNA_fasta, dsDNA_fasta, dsDNA_precomputed, token: str, triplex_params, species, use_randomization=0, is_bed=False):
         ssRNA_fasta.seek(0)
         if (dsDNA_fasta):
             dsDNA_fasta.seek(0)
@@ -81,6 +81,7 @@ class TriplexService:
             query_params.append(f"dsdna_target={dsDNA_precomputed}")
         if (use_randomization):
             query_params.append(f"use_random={use_randomization}")
+        query_params.append(f"is_bed={is_bed}")
         query_params.append(f"debug={settings.DEBUG}")
         if (len(query_params)>0):
             url = f"{url}?{ '&'.join(query_params) }"

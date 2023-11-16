@@ -78,3 +78,12 @@ class TokenQueueService:
         for user in users:
             TokenQueueService.notify_user_email_job_failed(user)
         
+
+    def set_dbds(token: Token, dbds):
+         DBD.objects.filter(token=token).delete()
+         for dbd in dbds:
+            DBD.objects.create(token=token, start=dbd[0], end=dbd[1])
+    
+    def get_dbds(token: Token):
+        dbds = DBD.objects.filter(token=token).order_by('start')
+        return [ [dbd.start, dbd.end] for dbd in dbds ]

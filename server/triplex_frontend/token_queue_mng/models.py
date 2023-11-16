@@ -80,3 +80,9 @@ class Token(models.Model):
                         break
         else:
             super(Token, self).save(*args, **kwargs)
+
+
+class DBD(models.Model):
+    token = models.ForeignKey(Token, null=False, blank=False, on_delete=models.CASCADE)
+    start = models.IntegerField(null=False, blank=False)
+    end = models.IntegerField(null=False, blank=False)

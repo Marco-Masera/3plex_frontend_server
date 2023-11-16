@@ -42,8 +42,14 @@ class SubmitResult(APIView):
             summary = request.data[SUMMARY]
             profile = request.data[PROFILE]
             secondary_struct = request.data[SECONDARY_STRUCTURE]
-            stability_indexed = request.data[STABILITY_INDEXED]
-            stability_indexes = request.data[STABILITY_INDEXES]
+            if (STABILITY_INDEXED in request.data):
+                stability_indexed = request.data[STABILITY_INDEXED]
+            else:
+                stability_indexed = None
+            if (STABILITY_INDEXES in request.data):
+                stability_indexes = request.data[STABILITY_INDEXES]
+            else:
+                stability_indexes = None
             if (PROFILE_RANDOM in request.data):
                 profile_random = request.data[PROFILE_RANDOM]
             else:

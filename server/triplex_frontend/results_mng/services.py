@@ -80,6 +80,9 @@ class ResultsMngServices:
         if (not TokenQueueService.token_is_state_submitted(tokenObject)):
             raise TokenIsNotStateSubmittedException()
 
+        print(stability_indexed)
+        print(stability_indexes)
+        
         data.stability = stability
         data.summary = summary
         data.stability.name = f"jobs/{data.base_path}/{data.stability.name}"

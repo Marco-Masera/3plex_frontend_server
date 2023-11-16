@@ -4,6 +4,7 @@ import pyBigWig
 from django.conf import settings
 from results_mng.models import TranscriptExon
 import numpy as np
+from os import path
 from visualization import genomeToTranscriptMapper as gttm
 import tabix
 
@@ -31,9 +32,12 @@ import tabix
 	14	Stability"""
 
 def find_tpx_in_interval(jobData, start, end, stability_th):
+    if not (path.isfile(jobData.stability_indexed.path)):
+        return None
     tb = tabix.open(jobData.stability_indexed.path)
     records = tb.query("ssRNA", start, end)
     records = [record for record in records if float(record[13]) >= stability_th]
+    return records
 
 def genomic_intervalsToTranscript(exons, bb, strand):
     repeats = []

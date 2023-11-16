@@ -12,7 +12,6 @@ django-cors-headers==4.0.0
 django-su==1.0.0
 djangorestframework==3.14.0
 et-xmlfile==1.1.0
-six
 gunicorn==21.2.0
 idna==3.4
 mysqlclient
