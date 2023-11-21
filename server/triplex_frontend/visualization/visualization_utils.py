@@ -6,7 +6,7 @@ from results_mng.models import TranscriptExon
 import numpy as np
 from os import path
 from visualization import genomeToTranscriptMapper as gttm
-import tabix
+import sqlite3
 
 """
     Timing test for conservation:
@@ -34,9 +34,16 @@ import tabix
 def find_tpx_in_interval(jobData, start, end, stability_th):
     if not (path.isfile(jobData.stability_indexed.path)):
         return None
-    tb = tabix.open(jobData.stability_indexed.path)
-    records = tb.query("ssRNA", start, end)
-    records = [record for record in records if float(record[13]) >= stability_th]
+    conn = sqlite3.connect(jobData.stability_indexed.path)
+    cursor = conn.cursor()
+    query = """
+        SELECT * FROM TPX_Stability
+        WHERE Stability >= ? AND tfo_start >= ? AND tfo_end <= ?
+    """
+    cursor.execute(query, (stability_th, start, end))
+    # Fetch all the records that satisfy the conditions
+    records = cursor.fetchall()
+    conn.close()
     return records
 
 def genomic_intervalsToTranscript(exons, bb, strand):
