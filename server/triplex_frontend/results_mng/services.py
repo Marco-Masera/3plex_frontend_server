@@ -7,9 +7,9 @@ from django.db.models import Q
 import hmac
 import os
 import gzip
+from django.db import transaction
 from results_mng.hash_lib import get_hash
 from visualization.visualization_utils import get_repeats_by_transcript_id, get_conservation_by_transcript_id
-
 
 class ResultsMngServices:
     #Retrieve data from token (string)
@@ -72,7 +72,7 @@ class ResultsMngServices:
             return existingJob
         return job
     
-    def receive_data(token: str, stability, summary, profile, secondary_struct, profile_random, stability_indexed, stability_indexes) -> JobData:
+    def receive_data(token: str, stability, summary, profile, secondary_struct, profile_random, stability_indexed) -> JobData:
         #Note: data must be initialized or this will return DataDoesNotExistException
         tokenObject = TokenQueueService.find_token(token)
         data = tokenObject.job
@@ -80,18 +80,15 @@ class ResultsMngServices:
         if (not TokenQueueService.token_is_state_submitted(tokenObject)):
             raise TokenIsNotStateSubmittedException()
 
-        print(stability_indexed)
-        print(stability_indexes)
         
         data.stability = stability
         data.summary = summary
         data.stability.name = f"jobs/{data.base_path}/{data.stability.name}"
         data.summary.name = f"jobs/{data.base_path}/{data.summary.name}"
         data.stability_indexed = stability_indexed
-        data.stability_indexes = stability_indexes
-        data.stability_indexed.name = f"jobs/{data.base_path}/{data.stability_indexed.name}"
-        data.stability_indexes.name = f"jobs/{data.base_path}/{data.stability_indexes.name}"
-        
+        if (stability_indexed is not None):
+            data.stability_indexed.name = f"jobs/{data.base_path}/{data.stability_indexed.name}"
+
         data.profile = profile
         data.profile.name = f"jobs/{data.base_path}/{data.profile.name}"
         if (profile_random):
@@ -101,6 +98,11 @@ class ResultsMngServices:
         data.secondary_structure.name = f"jobs/{data.base_path}/{data.secondary_structure.name}"
         data.state = "Ready"
         data.save()
+        #Stability web: only if input was .bed
+        build_summary_web = (stability_indexed is not None)
+        if (build_summary_web):
+            ResultsMngServices.build_summary_web(data)
+
         TokenQueueService.notify_all_users_email_job_completed(data)
         return data
 
@@ -212,3 +214,61 @@ class ResultsMngServices:
 
     def get_dna_target_sites():
         return DnaTargetSites.objects.all()
+
+    @transaction.atomic
+    def build_summary_web(jobData: JobData):
+        with gzip.open(jobData.summary.path, mode='rt') as summary_file:
+            for line in summary_file.readlines()[1:]:
+                line = line.split("\t")
+                summary = SummaryWebVersion()
+                summary.job = jobData
+                summary.ssRNA_id = line[1]
+                summary.dsDNA_id = line[0]
+                seqId = line[0].split(":")
+                summary.dsDNA_chr = seqId[2]
+                coords = seqId[3].split("-")
+                summary.dsDNA_b = coords[0]
+                summary.dsDNA_e = coords[1]
+                summary.stability_best = float(line[11])
+                summary.stability_norm = float(line[14])
+                summary.score_best = float(line[13])
+                summary.save()
+
+"""    @transaction.atomic
+    def build_tpx_indexed(jobData: JobData):
+        with gzip.open(jobData.stability.path, mode='rt') as summary_file:
+            for line in summary_file.readlines()[1:]:
+                line = line.split("\t")
+                tpx = JobSingleTpx()
+                tpx.job = jobData
+                tpx.tfo_start = int(line[1])
+                tpx.tfo_end = int(line[2])
+                tpx.Duplex_ID = line[3]
+                tpx.TTS_start = int(line[4])
+                tpx.TTS_end = int(line[5])
+                tpx.Score = float(line[6])
+                tpx.Error_rate = float(line[7])
+                tpx.Errors = line[8]
+                tpx.Motif = line[9]
+                tpx.Strand = line[10]
+                tpx.Orientation = line[11]
+                tpx.Guanine_rate = float(line[12])
+                tpx.Stability = float(line[13])
+                tpx.save()"""
+    
+""" Index tpx.stability too? =>
+	1	ssRNA -NO
+	2	TFO_start -YES
+	3	TFO_end   -YES
+	4	Duplex_ID -YES
+	5	TTS_start -YES
+	6	TTS_end   -YES
+	7	Score     -NO?
+	8	Error_rate -NO?
+	9	Errors    -NO?
+	10	Motif     -NO?
+	11	Strand    -NO?
+	12	Orientation -NO?
+	13	Guanine_rate -NO?
+	14	Stability  -YES
+"""
