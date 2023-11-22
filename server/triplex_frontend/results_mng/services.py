@@ -233,42 +233,6 @@ class ResultsMngServices:
                 summary.stability_norm = float(line[14])
                 summary.score_best = float(line[13])
                 summary.save()
-
-"""    @transaction.atomic
-    def build_tpx_indexed(jobData: JobData):
-        with gzip.open(jobData.stability.path, mode='rt') as summary_file:
-            for line in summary_file.readlines()[1:]:
-                line = line.split("\t")
-                tpx = JobSingleTpx()
-                tpx.job = jobData
-                tpx.tfo_start = int(line[1])
-                tpx.tfo_end = int(line[2])
-                tpx.Duplex_ID = line[3]
-                tpx.TTS_start = int(line[4])
-                tpx.TTS_end = int(line[5])
-                tpx.Score = float(line[6])
-                tpx.Error_rate = float(line[7])
-                tpx.Errors = line[8]
-                tpx.Motif = line[9]
-                tpx.Strand = line[10]
-                tpx.Orientation = line[11]
-                tpx.Guanine_rate = float(line[12])
-                tpx.Stability = float(line[13])
-                tpx.save()"""
     
-""" Index tpx.stability too? =>
-	1	ssRNA -NO
-	2	TFO_start -YES
-	3	TFO_end   -YES
-	4	Duplex_ID -YES
-	5	TTS_start -YES
-	6	TTS_end   -YES
-	7	Score     -NO?
-	8	Error_rate -NO?
-	9	Errors    -NO?
-	10	Motif     -NO?
-	11	Strand    -NO?
-	12	Orientation -NO?
-	13	Guanine_rate -NO?
-	14	Stability  -YES
-"""
+    def get_web_summary(jobData: JobData):
+        return SummaryWebVersion.objects.filter(job=jobData)

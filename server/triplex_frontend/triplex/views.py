@@ -190,3 +190,11 @@ class DBD_Controller(APIView):
             return Responses.success(None)
         except TriplexException as e:
             return e.handle()
+
+class WebSummaryController(APIView):
+    def get(self, request, *args, **kwargs):
+        try:
+            job = ResultsMngServices.get_by_token(kwargs.get("token"))
+            return Responses.success(ResultsMngServices.get_web_summary(job))
+        except TriplexException as e:
+            return e.handle()

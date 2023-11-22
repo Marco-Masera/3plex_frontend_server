@@ -14,4 +14,5 @@ urlpatterns = [
     path('data_for_visuals/<str:token>', VisualsController.as_view()),
     path('tts_sites/<str:token>/<str:start>/<str:end>/<str:stability>', TTS_Sites_Controller.as_view()),
     path('dbd/<str:token>', DBD_Controller.as_view()),
+    path('jobs/<str:token>/websummary', WebSummaryController.as_view()),
 ]
