@@ -108,7 +108,6 @@ class JobData(models.Model):
 
     stability = models.FileField(default=None, null=True)
     stability_indexed = models.FileField(default=None, null=True)
-    stability_indexes = models.FileField(default=None, null=True)
     summary = models.FileField(default=None, null=True)
     profile = models.FileField(default=None, null=True)
     profile_random = models.FileField(default=None, null=True)
@@ -177,14 +176,11 @@ class JobData(models.Model):
             if os.path.isfile(self.secondary_structure.path):
                 dir_ = self.secondary_structure.path
                 os.remove(self.secondary_structure.path)
-        if self.stability_indexes and self.stability_indexes.path:
-            if os.path.isfile(self.stability_indexes.path):
-                dir_ = self.stability_indexes.path
-                os.remove(self.stability_indexes.path)
         if self.stability_indexed and self.stability_indexed.path:
             if os.path.isfile(self.stability_indexed.path):
                 dir_ = self.stability_indexed.path
                 os.remove(self.stability_indexed.path)
+
         if (dir_ is not None and len(dir_)>0):
             dir_ = os.path.dirname(os.path.join(settings.MEDIA_ROOT, str(dir_)))
             if (os.path.isdir(dir_)):
@@ -217,6 +213,25 @@ class JobData(models.Model):
                     break
         else:
             super(JobData, self).save(*args, **kwargs)
+
+class SummaryWebVersion(models.Model):
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['job', 'dsDNA_id'], name='unique_row_summary_web'
+            )
+        ]
+        indexes = [
+           models.Index(fields=['job']),]
+    job = models.ForeignKey(JobData, on_delete=models.CASCADE)
+    ssRNA_id = models.CharField(max_length=128)
+    dsDNA_id = models.CharField(max_length=256)
+    dsDNA_chr = models.CharField(max_length=32)
+    dsDNA_b = models.IntegerField()
+    dsDNA_e = models.IntegerField()
+    stability_best = models.FloatField()
+    stability_norm = models.FloatField()
+    score_best = models.IntegerField()
 
 @receiver(models.signals.post_delete, sender=JobData)
 def auto_delete_file_on_delete(sender, instance, **kwargs):
