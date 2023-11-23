@@ -221,6 +221,8 @@ class SummaryWebVersion(models.Model):
                 fields=['job', 'dsDNA_id'], name='unique_row_summary_web'
             )
         ]
+        indexes = [
+           models.Index(fields=['job']),]
     job = models.ForeignKey(JobData, on_delete=models.CASCADE)
     ssRNA_id = models.CharField(max_length=128)
     dsDNA_id = models.CharField(max_length=256)
@@ -228,7 +230,7 @@ class SummaryWebVersion(models.Model):
     dsDNA_b = models.IntegerField()
     dsDNA_e = models.IntegerField()
     stability_best = models.FloatField()
-    stability_norm = models.IntegerField()
+    stability_norm = models.FloatField()
     score_best = models.IntegerField()
 
 @receiver(models.signals.post_delete, sender=JobData)

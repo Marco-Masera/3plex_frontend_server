@@ -137,11 +137,12 @@ class VisualsController(APIView):
     def get(self, request, *args, **kwargs):
         try:
             token = kwargs.get("token")
+            dsDNA_id = request.query_params.get('dsDNAID')
             token_object = TokenQueueService.find_token(token)
             #If token not ready return error
             token_object.assert_state_ready()
             #Retrieve data for visualizations
-            data = ResultsMngServices.get_data_for_visuals(token)
+            data = ResultsMngServices.get_data_for_visuals(token, dsDNA_id)
             ResultsMngServices.update_data_last_date(token)
             
             return Responses.success({"job": token_object, "available": data})
@@ -155,9 +156,10 @@ class TTS_Sites_Controller(APIView):
             start = int(kwargs.get("start"))
             end = int(kwargs.get("end"))
             stability = float(kwargs.get("stability"))
+            dsDNAID = request.query_params.get('dsdnaid')
             #Retrieve job data
             data = ResultsMngServices.get_by_token(token)
-            values = find_tpx_in_interval(data, start, end, stability)
+            values = find_tpx_in_interval(data, start, end, stability, dsDNAID)
             ResultsMngServices.update_data_last_date(token)
             return Responses.success({"data": values})
         except TriplexException as e:
@@ -196,5 +198,15 @@ class WebSummaryController(APIView):
         try:
             job = ResultsMngServices.get_by_token(kwargs.get("token"))
             return Responses.success(ResultsMngServices.get_web_summary(job))
+        except TriplexException as e:
+            return e.handle()
+
+class ProfileController(APIView):
+    def get(self, request, *args, **kwargs):
+        try:
+            job = ResultsMngServices.get_by_token(kwargs.get("token"))
+            dsDNAID = kwargs.get("dsDNAID")
+            result = ResultsMngServices.get_profile_dsDNAID(job, dsDNAID)
+            return Responses.binary(result)
         except TriplexException as e:
             return e.handle()
