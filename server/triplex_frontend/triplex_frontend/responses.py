@@ -5,6 +5,7 @@ from django.forms import model_to_dict
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models import Model
 from django.db.models.query import QuerySet
+from django.http import HttpResponse
 import json
 
 
@@ -33,4 +34,7 @@ class Responses:
     def generic_failure(message: str = "Internal server error", errorCode: status = status.HTTP_500_INTERNAL_SERVER_ERROR):
         data = json.dumps({ 'success': False, 'error': message }, cls=ExtendedEncoder)
         return Response(data, status=errorCode)
+
+    def binary(data):
+        return HttpResponse(data, content_type="application/x-binary")
     

@@ -16,7 +16,6 @@ from triplex_frontend.triplex_exceptions import DidNotReceiveInputFilesException
 #Input body as key-value form-data with keys:
 STABILITY = "STABILITY"
 STABILITY_INDEXED = "STABILITY_INDEXED"
-STABILITY_INDEXES = "STABILITY_INDEXES"
 SUMMARY = "SUMMARY"
 PROFILE = "PROFILE"
 SECONDARY_STRUCTURE = "SECONDARY_STRUCTURE"
@@ -42,18 +41,12 @@ class SubmitResult(APIView):
             summary = request.data[SUMMARY]
             profile = request.data[PROFILE]
             secondary_struct = request.data[SECONDARY_STRUCTURE]
+            profile_random = None; stability_indexed = None;
             if (STABILITY_INDEXED in request.data):
                 stability_indexed = request.data[STABILITY_INDEXED]
-            else:
-                stability_indexed = None
-            if (STABILITY_INDEXES in request.data):
-                stability_indexes = request.data[STABILITY_INDEXES]
-            else:
-                stability_indexes = None
             if (PROFILE_RANDOM in request.data):
                 profile_random = request.data[PROFILE_RANDOM]
-            else:
-                profile_random = None
+
             if (stability is None or summary is None):
                 raise DidNotReceiveInputFilesException()
             if (stability.size == 0 or summary.size == 0):
@@ -61,7 +54,8 @@ class SubmitResult(APIView):
             if (profile is None or profile.size == 0):
                 raise DidNotReceiveInputFilesException()
 
-            ResultsMngServices.receive_data(token, stability, summary, profile, secondary_struct, profile_random, stability_indexed, stability_indexes)
+            ResultsMngServices.receive_data(token, stability, summary, profile, secondary_struct, profile_random,
+            stability_indexed)
             ResultsMngServices.update_data_last_date(token)
             
         except TriplexException as e:
