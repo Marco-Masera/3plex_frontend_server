@@ -7,9 +7,13 @@ from django.db.models import Q
 import hmac
 import os
 import gzip
+import tempfile
+import subprocess
 from django.db import transaction
 from results_mng.hash_lib import get_hash
 from visualization.visualization_utils import get_repeats_by_transcript_id, get_conservation_by_transcript_id
+import sqlite3
+from results_mng.tfo_profile import compute_profile_from_tpx
 
 class ResultsMngServices:
     #Retrieve data from token (string)
@@ -74,6 +78,7 @@ class ResultsMngServices:
     
     def receive_data(token: str, stability, summary, profile, secondary_struct, profile_random, stability_indexed) -> JobData:
         #Note: data must be initialized or this will return DataDoesNotExistException
+        print("Starting receiving data")
         tokenObject = TokenQueueService.find_token(token)
         data = tokenObject.job
 
@@ -98,7 +103,11 @@ class ResultsMngServices:
         data.secondary_structure.name = f"jobs/{data.base_path}/{data.secondary_structure.name}"
         data.state = "Ready"
         data.save()
+        print("Data saved")
+        print("Unzipping")
+        ResultsMngServices.unzip_stability_indexed(data)
         #Stability web: only if input was .bed
+        print("Building summary into db")
         build_summary_web = (stability_indexed is not None)
         if (build_summary_web):
             ResultsMngServices.build_summary_web(data)
@@ -106,20 +115,47 @@ class ResultsMngServices:
         TokenQueueService.notify_all_users_email_job_completed(data)
         return data
 
+    def unzip_stability_indexed(data: JobData):
+        def execute_command(cmd, path):
+            return_code = -1
+            try:
+                cwd = tempfile.mkdtemp(path)
+                with subprocess.Popen(['/bin/bash', '-c', cmd], cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, bufsize=1) as p:
+                    return_code = p.wait()
+            finally:
+                try:
+                    shutil.rmtree(cwd)
+                except Exception:
+                    pass
+            return return_code
+        s = data.stability_indexed
+        print(s.name); print(s.path); print(s.url)
+        path = os.path.dirname(s.path)
+        execute_command(f"cd {path} && gzip -d {s.path}", "temp")
+        data.stability_indexed.name = s.name[:-3]
+        data.save()
+
     def update_data_last_date(token: str):
         jobData = ResultsMngServices.get_by_token(token)
         jobData.date = datetime.now()
         jobData.save()
 
-    def get_data_for_visuals(token:str):
+    def get_data_for_visuals(token:str, dsDNA_id = None):
         data = ResultsMngServices.get_by_token(token)
         #Returns urls of available data
         def clean_name(name):
             return name.split("/")[-1]
         available = dict()
         #Profile for tfo count
-        if (data.profile != None  and bool(data.profile)):
-            available["tfo_profile"] = data.profile.url
+        if (dsDNA_id is None):
+            if (data.profile != None  and bool(data.profile)):
+                available["tfo_profile"] = data.profile.url
+                available["profile_dynamic"] = False
+        else:
+            available["tpx"] = ResultsMngServices.get_tpx_by_dsDNAID(data, dsDNA_id)
+            available["tfo_profile"] = f"jobs/{token}/{dsDNA_id}/profile"
+            available["profile_dynamic"] = True
+            
         if (data.secondary_structure != None  and bool(data.secondary_structure)):
             available["secondary_structure"] = data.secondary_structure.url
         #Signal for conservation
@@ -141,7 +177,7 @@ class ResultsMngServices:
                 sequence = ''.join(sequence.splitlines(keepends=False)[1:])
                 available["sequence"] = sequence
         #Profile rand
-        if (data.profile_random is not None and bool(data.profile_random)):
+        if (data.profile_random is not None and bool(data.profile_random) and dsDNA_id is None):
             available["statistics"] = data.profile_random.url
         
         return available
@@ -236,3 +272,39 @@ class ResultsMngServices:
     
     def get_web_summary(jobData: JobData):
         return SummaryWebVersion.objects.filter(job=jobData)
+
+    def get_profile_dsDNAID(job, dsDNAID):
+        if not (os.path.isfile(job.stability_indexed.path)):
+            return []
+        conn = sqlite3.connect(job.stability_indexed.path)
+        cursor = conn.cursor()
+        query = """
+            SELECT tfo_start, tfo_end, Stability FROM TPX_Stability
+            WHERE Duplex_ID = ? ORDER BY Stability DESC;
+        """
+        cursor.execute(query, (dsDNAID ,))
+        # Fetch all the records that satisfy the conditions
+        tpx = cursor.fetchall()
+        conn.close()
+        return compute_profile_from_tpx(tpx)
+
+    def get_tpx_by_dsDNAID(data, dsDNA_id):
+        def dict_factory(cursor, row):
+            d = {}
+            for idx, col in enumerate(cursor.description):
+                d[col[0]] = row[idx]
+            return d
+        if not (os.path.isfile(data.stability_indexed.path)):
+            return []
+        conn = sqlite3.connect(data.stability_indexed.path)
+        conn.row_factory = dict_factory
+        cursor = conn.cursor()
+        query = """
+            SELECT * FROM TPX_Stability
+            WHERE Duplex_ID = ?
+        """
+        cursor.execute(query, (dsDNA_id ,))
+        # Fetch all the records that satisfy the conditions
+        records = cursor.fetchall()
+        conn.close()
+        return records

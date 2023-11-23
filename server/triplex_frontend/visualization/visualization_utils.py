@@ -7,6 +7,7 @@ import numpy as np
 from os import path
 from visualization import genomeToTranscriptMapper as gttm
 import sqlite3
+from datetime import datetime
 
 """
     Timing test for conservation:
@@ -31,16 +32,29 @@ import sqlite3
 	13	Guanine_rate
 	14	Stability"""
 
-def find_tpx_in_interval(jobData, start, end, stability_th):
-    if not (path.isfile(jobData.stability_indexed.path)):
+def find_tpx_in_interval(data, start, end, stability_th, dsDNA_id=None):
+    def dict_factory(cursor, row):
+        d = {}
+        for idx, col in enumerate(cursor.description):
+            d[col[0]] = row[idx]
+        return d
+    if not (path.isfile(data.stability_indexed.path)):
         return None
-    conn = sqlite3.connect(jobData.stability_indexed.path)
+    conn = sqlite3.connect(data.stability_indexed.path)
+    conn.row_factory = dict_factory
     cursor = conn.cursor()
-    query = """
+    if (dsDNA_id is None):
+        query = """
         SELECT * FROM TPX_Stability
         WHERE Stability >= ? AND tfo_start >= ? AND tfo_end <= ?
-    """
-    cursor.execute(query, (stability_th, start, end))
+        """
+        cursor.execute(query, (stability_th, start, end))
+    else:
+        query = """
+        SELECT * FROM TPX_Stability
+        WHERE Stability >= ? AND tfo_start >= ? AND tfo_end <= ? AND Duplex_ID = ?
+        """
+        cursor.execute(query, (stability_th, start, end, dsDNA_id))
     # Fetch all the records that satisfy the conditions
     records = cursor.fetchall()
     conn.close()
