@@ -41,7 +41,7 @@ class SubmitjobController(APIView):
 
             #Initialize data section to receive results
             jobData = ResultsMngServices.initialize_or_retrieve_data_section(ssRNA_fasta, dsDNA_file, dsDNA_precomputed, 
-                triplex_params, ssRNA_id, species, use_randomization=use_randomization)
+                triplex_params, ssRNA_id, species, use_randomization=use_randomization, is_bed = is_bed_dsDNA)
             #If the ssRNA is specified by ID, open the corresponding file
             if (ssRNA_fasta is None):
                 ssRNA_fasta = open(jobData.ssRNA_id.ssRNA_fasta_path, 'rb')
