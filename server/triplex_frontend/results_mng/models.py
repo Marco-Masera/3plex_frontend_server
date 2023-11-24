@@ -104,16 +104,18 @@ class JobData(models.Model):
     ssRNA_fasta = models.FileField(default=None, null=True)
 
     dsDNA_fasta = models.FileField(default=None, null=True)
-    dsDNA_precomputed_target = models.ForeignKey(DnaTargetSites, null=True, default=None, on_delete=models.PROTECT)
+    dsDNA_precomputed_target = models.ForeignKey(DnaTargetSites, null=True, default=None,blank=True, on_delete=models.PROTECT)
 
-    stability = models.FileField(default=None, null=True)
-    stability_indexed = models.FileField(default=None, null=True)
-    summary = models.FileField(default=None, null=True)
-    profile = models.FileField(default=None, null=True)
-    profile_random = models.FileField(default=None, null=True)
-    secondary_structure = models.FileField(default=None, null=True)
-    rawLogsSTDOUT = models.FileField(default=None, null=True)
-    rawLogsSTDERR = models.FileField(default=None, null=True)
+    stability = models.FileField(default=None, null=True,blank=True)
+    stability_indexed = models.FileField(default=None, null=True,blank=True)
+    summary = models.FileField(default=None, null=True,blank=True)
+    profile = models.FileField(default=None, null=True,blank=True)
+    profile_random = models.FileField(default=None, null=True,blank=True)
+    secondary_structure = models.FileField(default=None, null=True,blank=True)
+    rawLogsSTDOUT = models.FileField(default=None, null=True,blank=True)
+    rawLogsSTDERR = models.FileField(default=None, null=True,blank=True)
+
+    is_dsDNA_bed = models.BooleanField(default=True)
 
     #Cleaned up keep tracks of the job history, if it was cleaned up after not being accessed for some time
     cleaned_up = models.BooleanField(default=False)

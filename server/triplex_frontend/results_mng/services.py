@@ -40,11 +40,16 @@ class ResultsMngServices:
                 return job
         return None 
 
-    def initialize_or_retrieve_data_section(ssRNA_fasta, dsDNA_fasta, dsDNA_precomputed, triplex_params, ssRNA_id = None, species = None, use_randomization=0):
+    def initialize_or_retrieve_data_section(ssRNA_fasta, dsDNA_fasta, dsDNA_precomputed, triplex_params, ssRNA_id = None, species = None, use_randomization=0, is_bed = False):
         #Compute hash value of input data
         hashed = get_hash([ssRNA_fasta,dsDNA_fasta], [triplex_params, {"id":ssRNA_id, "species": species, "dsDNA_precomputed":dsDNA_precomputed, "randomization": use_randomization}])
+        
+        #If user provided bed file or dsDNA precomputed, then a bed file is available for the system
+        is_bed = is_bed or dsDNA_precomputed is not None
+    
         #initialize new data section, keep track of sequence and id, used later for computing the conservation
         job = JobData()
+        job.is_dsDNA_bed = is_bed
         job.hash_code = hashed
         job.triplex_params = triplex_params
         job.save() #To generate id
@@ -76,9 +81,8 @@ class ResultsMngServices:
             return existingJob
         return job
     
-    def receive_data(token: str, stability, summary, profile, secondary_struct, profile_random, stability_indexed) -> JobData:
+    def receive_data(token: str, stability, summary, profile, secondary_struct, profile_random) -> JobData:
         #Note: data must be initialized or this will return DataDoesNotExistException
-        print("Starting receiving data")
         tokenObject = TokenQueueService.find_token(token)
         data = tokenObject.job
 
@@ -90,9 +94,6 @@ class ResultsMngServices:
         data.summary = summary
         data.stability.name = f"jobs/{data.base_path}/{data.stability.name}"
         data.summary.name = f"jobs/{data.base_path}/{data.summary.name}"
-        data.stability_indexed = stability_indexed
-        if (stability_indexed is not None):
-            data.stability_indexed.name = f"jobs/{data.base_path}/{data.stability_indexed.name}"
 
         data.profile = profile
         data.profile.name = f"jobs/{data.base_path}/{data.profile.name}"
@@ -101,39 +102,19 @@ class ResultsMngServices:
             data.profile_random.name = f"jobs/{data.base_path}/{data.profile_random.name}"
         data.secondary_structure = secondary_struct
         data.secondary_structure.name = f"jobs/{data.base_path}/{data.secondary_structure.name}"
+        data.save()
+        stability_indexed = ResultsMngServices.build_stabilty_indexed(data)
+        print(stability_indexed)
+        data.stability_indexed.name = stability_indexed
         data.state = "Ready"
         data.save()
-        print("Data saved")
-        print("Unzipping")
-        ResultsMngServices.unzip_stability_indexed(data)
         #Stability web: only if input was .bed
-        print("Building summary into db")
-        build_summary_web = (stability_indexed is not None)
+        build_summary_web = data.is_dsDNA_bed
         if (build_summary_web):
             ResultsMngServices.build_summary_web(data)
 
         TokenQueueService.notify_all_users_email_job_completed(data)
         return data
-
-    def unzip_stability_indexed(data: JobData):
-        def execute_command(cmd, path):
-            return_code = -1
-            try:
-                cwd = tempfile.mkdtemp(path)
-                with subprocess.Popen(['/bin/bash', '-c', cmd], cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, bufsize=1) as p:
-                    return_code = p.wait()
-            finally:
-                try:
-                    shutil.rmtree(cwd)
-                except Exception:
-                    pass
-            return return_code
-        s = data.stability_indexed
-        print(s.name); print(s.path); print(s.url)
-        path = os.path.dirname(s.path)
-        execute_command(f"cd {path} && gzip -d {s.path}", "temp")
-        data.stability_indexed.name = s.name[:-3]
-        data.save()
 
     def update_data_last_date(token: str):
         jobData = ResultsMngServices.get_by_token(token)
@@ -251,6 +232,61 @@ class ResultsMngServices:
     def get_dna_target_sites():
         return DnaTargetSites.objects.all()
 
+    
+    def build_stabilty_indexed(data: JobData):
+        is_bed_file = data.is_dsDNA_bed
+        path = f"jobs/{data.base_path}/index_tpx_stability.db"
+        full_path = os.path.join(settings.MEDIA_ROOT, path)
+        print(full_path)
+        conn = sqlite3.connect(full_path)
+        cursor = conn.cursor()
+        # Create the table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS TPX_Stability (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tfo_start INTEGER, tfo_end INTEGER,
+                Duplex_ID TEXT, TTS_start INTEGER,
+                TTS_end INTEGER, Score REAL,
+                Error_rate REAL, Errors TEXT,
+                Motif TEXT, Strand TEXT,
+                Orientation TEXT, Guanine_rate REAL,
+                Stability REAL, Representation TEXT)''')
+
+        conn.commit()
+        with gzip.open(data.stability.path, mode='rt') as stability:
+            for line_ in stability.readlines()[1:]:
+                line = line_.split("\t")
+                tfo_start = int(line[1])
+                tfo_end = int(line[2])
+                Duplex_ID = line[3]
+                if (is_bed_file):
+                    chr_start = int(Duplex_ID.split(":")[-1].split("-")[0])
+                else:
+                    chr_start = 0
+                TTS_start = int(line[4])+chr_start
+                TTS_end = int(line[5])+chr_start
+                Score = float(line[6])
+                Error_rate = float(line[7])
+                Errors = line[8]
+                Motif = line[9]
+                Strand = line[10]
+                Orientation = line[11]
+                Guanine_rate = float(line[12])
+                Stability = float(line[13])
+                #Build tfo string representation
+                tfo_tts = f"{line[14]}\n{line[15]}\n{line[16]}\n{line[17]}"
+                # Save the object to the database
+                cursor.execute('''
+                    INSERT INTO TPX_Stability
+                    (tfo_start, tfo_end, Duplex_ID, TTS_start, TTS_end, Score, Error_rate, Errors, Motif, Strand, Orientation, Guanine_rate, Stability, Representation)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (tfo_start, tfo_end, Duplex_ID, TTS_start, TTS_end,
+                    Score, Error_rate, Errors, Motif, Strand, Orientation,
+                    Guanine_rate, Stability, tfo_tts))
+
+        conn.commit()
+        conn.close()
+        return path
+
     @transaction.atomic
     def build_summary_web(jobData: JobData):
         with gzip.open(jobData.summary.path, mode='rt') as summary_file:
@@ -271,6 +307,8 @@ class ResultsMngServices:
                 summary.save()
     
     def get_web_summary(jobData: JobData):
+        if (jobData.is_dsDNA_bed == False):
+            return None
         return SummaryWebVersion.objects.filter(job=jobData)
 
     def get_profile_dsDNAID(job, dsDNAID):
