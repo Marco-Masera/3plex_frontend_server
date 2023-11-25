@@ -32,6 +32,8 @@ from datetime import datetime
 	13	Guanine_rate
 	14	Stability"""
 
+
+
 def find_tpx_in_interval(data, start, end, stability_th, dsDNA_id=None):
     def dict_factory(cursor, row):
         d = {}

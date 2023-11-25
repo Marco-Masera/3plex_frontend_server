@@ -13,7 +13,7 @@ from django.db import transaction
 from results_mng.hash_lib import get_hash
 from visualization.visualization_utils import get_repeats_by_transcript_id, get_conservation_by_transcript_id
 import sqlite3
-from results_mng.tfo_profile import compute_profile_from_tpx
+from results_mng.tfo_profile import compute_profile_from_tpx, compute_profile_for_genome_browser
 
 class ResultsMngServices:
     #Retrieve data from token (string)
@@ -310,6 +310,69 @@ class ResultsMngServices:
         if (jobData.is_dsDNA_bed == False):
             return None
         return SummaryWebVersion.objects.filter(job=jobData)
+
+    def get_trace_for_genome_browser(job, dsDNA_id, min_stability):
+        def build_url(obj):
+            #Build URL
+            species = settings.SPECIES_NAMES_TO_UCSC[obj.job.species]
+            trace_url = f'https://www.3plex.unito.it{obj.file.url}'.replace("debug/", "")
+            url = f"http://genome.ucsc.edu/cgi-bin/hgTracks?org={species}&hgt.customText={trace_url}"
+            return url
+
+        if not (os.path.isfile(job.stability_indexed.path)):
+            return []
+        #Check if there is a temp file already set
+        file = JobUCSCTrack.objects.filter(job=job,dsDNA_id=dsDNA_id,stability=str(min_stability)).first()
+        if (file is not None):
+            return build_url(file)
+        conn = sqlite3.connect(job.stability_indexed.path)
+        cursor = conn.cursor()
+        query = """
+            SELECT TTS_start, TTS_end, Stability FROM TPX_Stability
+            WHERE Duplex_ID = ? AND Stability >= ?;
+        """
+        cursor.execute(query, (dsDNA_id , min_stability))
+        # Fetch all the records that satisfy the conditions
+        tpx = cursor.fetchall()
+        conn.close()
+
+        #Build file
+        #If too many temp files, delete one
+        files = JobUCSCTrack.objects.filter(job=job)
+        if (files.count() >= settings.MAX_TEMP_FILES):
+            files[0].delete()
+        
+        #Create JobUCSCTrack object
+        obj = JobUCSCTrack()
+        obj.job = job; obj.stability = str(min_stability); obj.dsDNA_id = dsDNA_id
+        file_path = f"jobs/{job.base_path}/tmp{dsDNA_id}_{str(min_stability)}"
+        full_file_path = os.path.join(settings.MEDIA_ROOT, file_path)
+
+        chr_ = dsDNA_id.split(":")[2]
+        trace_name = f"tpx count in {dsDNA_id}"
+        TIME = datetime.now()
+        values, min_, max_ = compute_profile_for_genome_browser(tpx, chr_)
+        print(f"Len values: {len(values)}")
+        print(f"Took {datetime.now() - TIME}")
+        header = f"""browser position {chr_}:{min_}-{max_}
+browser hide all
+browser pack refGene encodeRegions
+browser full altGraph
+#	300 base wide bar graph, autoScale is on by default == graphing
+#	limits will dynamically change to always show full range of data
+#	in viewing window, priority = 20 positions this as the second graph
+#	Note, zero-relative, half-open coordinate system in use for bedGraph format
+track type=bedGraph name="{trace_name}" description="Number of tpx with stability >= {min_stability}" visibility=full color=200,100,0 altColor=0,100,200 priority=20
+"""
+        with open(full_file_path, "w") as file:
+            file.write(header)
+            for string in values:
+                file.write(string)
+        obj.file.name = file_path
+        obj.save()
+        return build_url(obj)
+         
+
 
     def get_profile_dsDNAID(job, dsDNAID):
         if not (os.path.isfile(job.stability_indexed.path)):
