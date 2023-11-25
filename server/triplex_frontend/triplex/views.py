@@ -210,3 +210,14 @@ class ProfileController(APIView):
             return Responses.binary(result)
         except TriplexException as e:
             return e.handle()
+
+class ProfileUCSCController(APIView):
+    def get(self, request, *args, **kwargs):
+        try:
+            job = ResultsMngServices.get_by_token(kwargs.get("token"))
+            dsDNAID = kwargs.get("dsDNAID")
+            stability = float(kwargs.get("stability"))
+            result = ResultsMngServices.get_trace_for_genome_browser(job, dsDNAID, stability)
+            return Responses.success(result)
+        except TriplexException as e:
+            return e.handle()

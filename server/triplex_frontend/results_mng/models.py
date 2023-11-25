@@ -141,6 +141,10 @@ class JobData(models.Model):
         return f"{self.date} - {self.state} - {self.hash_code}"
 
     def delete_all_files(self):
+        temp_files = JobUCSCTrack.objects.filter(job=self)
+        for t in temp_files:
+            t.delete()
+            
         dir_ = None
         if self.ssRNA_fasta:
             if os.path.isfile(self.ssRNA_fasta.path):
@@ -197,12 +201,10 @@ class JobData(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.base_path:
-            print("Saving")
             self.base_path = generate_random_alphanumeric(32)
             # using your function as above or anything else
             failures = 0
             while True:
-                print("Trying")
                 failures += 1
                 try:
                     super(JobData, self).save(*args, **kwargs)
@@ -215,6 +217,17 @@ class JobData(models.Model):
                     break
         else:
             super(JobData, self).save(*args, **kwargs)
+
+class JobUCSCTrack(models.Model):
+    job = models.ForeignKey(JobData, on_delete=models.CASCADE)
+    file = models.FileField()
+    dsDNA_id = models.CharField(max_length=64, blank=False)
+    stability = models.CharField(max_length=32, blank=False)
+
+    def delete_all_files(self):
+        if self.file:
+            if os.path.isfile(self.file.path):
+                os.remove(self.file.path)
 
 class SummaryWebVersion(models.Model):
     class Meta:
@@ -236,6 +249,9 @@ class SummaryWebVersion(models.Model):
     score_best = models.IntegerField()
 
 @receiver(models.signals.post_delete, sender=JobData)
+def auto_delete_file_on_delete(sender, instance, **kwargs):
+    instance.delete_all_files()
+@receiver(models.signals.post_delete, sender=JobUCSCTrack)
 def auto_delete_file_on_delete(sender, instance, **kwargs):
     instance.delete_all_files()
 
