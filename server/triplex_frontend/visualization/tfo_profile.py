@@ -58,7 +58,6 @@ class Ranges:
     def add_range(self,b,e,count, i=0):
         if e<b:
             raise ValueError("invalid range %d-%d, count: %d, i: %d" % (b,e,count,i))
-        #print("range %d-%d, count: %d, i: %d" % (b,e,count,i))
         if (b!=e):
             l = [count, (b + ((e-b)/2)), e-b+1]
         else:
@@ -128,7 +127,6 @@ def compute_profile_for_genome_browser(tpx_file, chr):
             profile_current[i]+=1
             if (e > max_len):
                 max_len = e
-    print(f"First part: Took {datetime.now() - TIME}")
     #Convert into list of intervals
     intervals = []
     previous_start = 0
@@ -136,7 +134,6 @@ def compute_profile_for_genome_browser(tpx_file, chr):
     TIME = datetime.now()
     positions = [int(x) for x in profile_current.keys()]
     positions.sort()
-    print(positions)
     min_ = positions[0]
     for i in positions:
         count = profile_current[i]
@@ -147,5 +144,4 @@ def compute_profile_for_genome_browser(tpx_file, chr):
                 previous_count = count
                 previous_start = i
     intervals.append(f"{chr} {previous_start} {max_len-1} {previous_count}\n")
-    print(f"Second part: Took {datetime.now() - TIME}")
     return intervals, min_, max_len

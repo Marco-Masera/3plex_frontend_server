@@ -14,7 +14,7 @@ from triplex_frontend.triplex_exceptions import *
 from token_queue_mng.services import TokenQueueService
 from results_mng.services import ResultsMngServices
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication 
-from visualization.visualization_utils import find_tpx_in_interval
+from visualization.visualization_utils import VisualizationUtils
 
 class CsrfExemptSessionAuthentication(SessionAuthentication):
 
@@ -142,7 +142,7 @@ class VisualsController(APIView):
             #If token not ready return error
             token_object.assert_state_ready()
             #Retrieve data for visualizations
-            data = ResultsMngServices.get_data_for_visuals(token, dsDNA_id)
+            data = VisualizationUtils.get_data_for_visuals(token_object.job, token, dsDNA_id)
             ResultsMngServices.update_data_last_date(token)
             
             return Responses.success({"job": token_object, "available": data})
@@ -159,7 +159,7 @@ class TTS_Sites_Controller(APIView):
             dsDNAID = request.query_params.get('dsdnaid')
             #Retrieve job data
             data = ResultsMngServices.get_by_token(token)
-            values = find_tpx_in_interval(data, start, end, stability, dsDNAID)
+            values = VisualizationUtils.find_tpx_in_interval(data, start, end, stability, dsDNAID)
             ResultsMngServices.update_data_last_date(token)
             return Responses.success({"data": values})
         except TriplexException as e:
@@ -197,7 +197,7 @@ class WebSummaryController(APIView):
     def get(self, request, *args, **kwargs):
         try:
             job = ResultsMngServices.get_by_token(kwargs.get("token"))
-            return Responses.success(ResultsMngServices.get_web_summary(job))
+            return Responses.success(VisualizationUtils.get_web_summary(job))
         except TriplexException as e:
             return e.handle()
 
@@ -206,7 +206,7 @@ class ProfileController(APIView):
         try:
             job = ResultsMngServices.get_by_token(kwargs.get("token"))
             dsDNAID = kwargs.get("dsDNAID")
-            result = ResultsMngServices.get_profile_dsDNAID(job, dsDNAID)
+            result = VisualizationUtils.get_profile_dsDNAID(job, dsDNAID)
             return Responses.binary(result)
         except TriplexException as e:
             return e.handle()
@@ -217,7 +217,7 @@ class ProfileUCSCController(APIView):
             job = ResultsMngServices.get_by_token(kwargs.get("token"))
             dsDNAID = kwargs.get("dsDNAID")
             stability = float(kwargs.get("stability"))
-            result = ResultsMngServices.get_trace_for_genome_browser(job, dsDNAID, stability)
+            result = VisualizationUtils.get_trace_for_genome_browser(job, dsDNAID, stability)
             return Responses.success(result)
         except TriplexException as e:
             return e.handle()
