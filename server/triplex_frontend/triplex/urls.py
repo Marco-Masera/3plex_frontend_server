@@ -16,4 +16,5 @@ urlpatterns = [
     path('dbd/<str:token>', DBD_Controller.as_view()),
     path('jobs/<str:token>/websummary', WebSummaryController.as_view()),
     path('jobs/<str:token>/<str:dsDNAID>/profile', ProfileController.as_view()),
+    path('jobs/<str:token>/<str:dsDNAID>/<str:stability>/profile_ucsc', ProfileUCSCController.as_view()),
 ]
