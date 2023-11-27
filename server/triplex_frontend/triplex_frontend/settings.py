@@ -20,6 +20,10 @@ ALLOWED_SPECIES = [
         ("hsapiens", "hsapiens"),
         ("mmusculus","mmusculus")
 ]
+SPECIES_NAMES_TO_UCSC = {
+    "hsapiens": "human",
+    "mmusculus": "mouse"
+}
 #Allowed randomization iterations
 ALLOWED_RANDOMIZATION_ITERATIONS = [
     10, 100, 500, 1000
@@ -55,6 +59,7 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = int(getenv("FILE_UPLOAD_MAX_MEMORY_SIZE"))
 DSDNA_MAX_SIZE = int(getenv("DSDNA_MAX_SIZE"))
 SSRNA_MAX_SIZE = int(getenv("SSRNA_MAX_SIZE"))
 
+MAX_TEMP_FILES = 5
 
 MEDIA_ROOT = getenv("MEDIA_ROOT")
 MEDIA_URL = getenv("MEDIA_URL")

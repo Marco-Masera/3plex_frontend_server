@@ -11,9 +11,7 @@ import tempfile
 import subprocess
 from django.db import transaction
 from results_mng.hash_lib import get_hash
-from visualization.visualization_utils import get_repeats_by_transcript_id, get_conservation_by_transcript_id
 import sqlite3
-from results_mng.tfo_profile import compute_profile_from_tpx
 
 class ResultsMngServices:
     #Retrieve data from token (string)
@@ -40,12 +38,14 @@ class ResultsMngServices:
                 return job
         return None 
 
-    def initialize_or_retrieve_data_section(ssRNA_fasta, dsDNA_fasta, dsDNA_precomputed, triplex_params, ssRNA_id = None, species = None, use_randomization=0, is_bed = False):
-        #Compute hash value of input data
-        hashed = get_hash([ssRNA_fasta,dsDNA_fasta], [triplex_params, {"id":ssRNA_id, "species": species, "dsDNA_precomputed":dsDNA_precomputed, "randomization": use_randomization}])
+    def initialize_or_retrieve_data_section(ssRNA_fasta, dsDNA_fasta, dsDNA_precomputed, triplex_params, 
+    ssRNA_id = None, species = None, use_randomization=0, is_bed = False):
         
         #If user provided bed file or dsDNA precomputed, then a bed file is available for the system
         is_bed = is_bed or dsDNA_precomputed is not None
+
+        #Compute hash value of input data
+        hashed = get_hash([ssRNA_fasta,dsDNA_fasta], [triplex_params, {"id":ssRNA_id, "species": species, "dsDNA_precomputed":dsDNA_precomputed, "randomization": use_randomization}])
     
         #initialize new data section, keep track of sequence and id, used later for computing the conservation
         job = JobData()
@@ -88,13 +88,11 @@ class ResultsMngServices:
 
         if (not TokenQueueService.token_is_state_submitted(tokenObject)):
             raise TokenIsNotStateSubmittedException()
-
-        
+        #Set file fields        
         data.stability = stability
         data.summary = summary
         data.stability.name = f"jobs/{data.base_path}/{data.stability.name}"
         data.summary.name = f"jobs/{data.base_path}/{data.summary.name}"
-
         data.profile = profile
         data.profile.name = f"jobs/{data.base_path}/{data.profile.name}"
         if (profile_random):
@@ -103,12 +101,13 @@ class ResultsMngServices:
         data.secondary_structure = secondary_struct
         data.secondary_structure.name = f"jobs/{data.base_path}/{data.secondary_structure.name}"
         data.save()
+        #Need to index tpx.stability
         stability_indexed = ResultsMngServices.build_stabilty_indexed(data)
-        print(stability_indexed)
         data.stability_indexed.name = stability_indexed
+        #Set state Ready
         data.state = "Ready"
         data.save()
-        #Stability web: only if input was .bed
+        #If input was .bed index tpx.summary too
         build_summary_web = data.is_dsDNA_bed
         if (build_summary_web):
             ResultsMngServices.build_summary_web(data)
@@ -121,48 +120,6 @@ class ResultsMngServices:
         jobData.date = datetime.now()
         jobData.save()
 
-    def get_data_for_visuals(token:str, dsDNA_id = None):
-        data = ResultsMngServices.get_by_token(token)
-        #Returns urls of available data
-        def clean_name(name):
-            return name.split("/")[-1]
-        available = dict()
-        #Profile for tfo count
-        if (dsDNA_id is None):
-            if (data.profile != None  and bool(data.profile)):
-                available["tfo_profile"] = data.profile.url
-                available["profile_dynamic"] = False
-        else:
-            available["tpx"] = ResultsMngServices.get_tpx_by_dsDNAID(data, dsDNA_id)
-            available["tfo_profile"] = f"jobs/{token}/{dsDNA_id}/profile"
-            available["profile_dynamic"] = True
-            
-        if (data.secondary_structure != None  and bool(data.secondary_structure)):
-            available["secondary_structure"] = data.secondary_structure.url
-        #Signal for conservation
-        if (data.ssRNA_id):
-            available["conservation"] = get_conservation_by_transcript_id(data.ssRNA_id)
-            #Signal for repeats
-            available["repeats"] = get_repeats_by_transcript_id(data.ssRNA_id)
-        #ssRNA sequence
-        if (data.ssRNA_id is not None):
-            ssRNA_fasta = data.ssRNA_id.ssRNA_fasta_path
-            with gzip.open(ssRNA_fasta, mode='rt') as file:
-                sequence = file.read()
-                sequence = ''.join(sequence.splitlines(keepends=False)[1:])
-                available["sequence"] = sequence
-        else:
-            ssRNA_fasta = data.ssRNA_fasta.path
-            with open(ssRNA_fasta, 'r') as file:
-                sequence = file.read()
-                sequence = ''.join(sequence.splitlines(keepends=False)[1:])
-                available["sequence"] = sequence
-        #Profile rand
-        if (data.profile_random is not None and bool(data.profile_random) and dsDNA_id is None):
-            available["statistics"] = data.profile_random.url
-        
-        return available
-    
     def get_data_by_token(token:str):
         data = ResultsMngServices.get_by_token(token)
         #Returns urls of available data
@@ -231,13 +188,11 @@ class ResultsMngServices:
 
     def get_dna_target_sites():
         return DnaTargetSites.objects.all()
-
     
     def build_stabilty_indexed(data: JobData):
         is_bed_file = data.is_dsDNA_bed
         path = f"jobs/{data.base_path}/index_tpx_stability.db"
         full_path = os.path.join(settings.MEDIA_ROOT, path)
-        print(full_path)
         conn = sqlite3.connect(full_path)
         cursor = conn.cursor()
         # Create the table
@@ -305,44 +260,3 @@ class ResultsMngServices:
                 summary.stability_norm = float(line[14])
                 summary.score_best = float(line[13])
                 summary.save()
-    
-    def get_web_summary(jobData: JobData):
-        if (jobData.is_dsDNA_bed == False):
-            return None
-        return SummaryWebVersion.objects.filter(job=jobData)
-
-    def get_profile_dsDNAID(job, dsDNAID):
-        if not (os.path.isfile(job.stability_indexed.path)):
-            return []
-        conn = sqlite3.connect(job.stability_indexed.path)
-        cursor = conn.cursor()
-        query = """
-            SELECT tfo_start, tfo_end, Stability FROM TPX_Stability
-            WHERE Duplex_ID = ? ORDER BY Stability DESC;
-        """
-        cursor.execute(query, (dsDNAID ,))
-        # Fetch all the records that satisfy the conditions
-        tpx = cursor.fetchall()
-        conn.close()
-        return compute_profile_from_tpx(tpx)
-
-    def get_tpx_by_dsDNAID(data, dsDNA_id):
-        def dict_factory(cursor, row):
-            d = {}
-            for idx, col in enumerate(cursor.description):
-                d[col[0]] = row[idx]
-            return d
-        if not (os.path.isfile(data.stability_indexed.path)):
-            return []
-        conn = sqlite3.connect(data.stability_indexed.path)
-        conn.row_factory = dict_factory
-        cursor = conn.cursor()
-        query = """
-            SELECT * FROM TPX_Stability
-            WHERE Duplex_ID = ?
-        """
-        cursor.execute(query, (dsDNA_id ,))
-        # Fetch all the records that satisfy the conditions
-        records = cursor.fetchall()
-        conn.close()
-        return records

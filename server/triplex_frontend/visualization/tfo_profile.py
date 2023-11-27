@@ -6,6 +6,7 @@ from collections import defaultdict
 import msgpack
 import sys
 import os 
+from datetime import datetime
 import numpy as np
 
 
@@ -46,6 +47,9 @@ def get_TFO_profile_allSparse(tpx_file):
                 best_stability[i] = stability
             if (e > max_len):
                 max_len = e
+
+    if stability_pre is not None:
+        profiles[stability_pre]=dict(profile_current)
                 
     return {"profiles": profiles, "best_stability": best_stability}, max_len
 
@@ -57,7 +61,6 @@ class Ranges:
     def add_range(self,b,e,count, i=0):
         if e<b:
             raise ValueError("invalid range %d-%d, count: %d, i: %d" % (b,e,count,i))
-        #print("range %d-%d, count: %d, i: %d" % (b,e,count,i))
         if (b!=e):
             l = [count, (b + ((e-b)/2)), e-b+1]
         else:
@@ -113,6 +116,35 @@ def compute_profile_from_tpx(tpx):
     to_export = {"profiles": profiles, "best_stability": best_stability}
     return msgpack.packb(to_export, use_bin_type=True)
 
-if __name__=="__main__":
-    main()
-    
+
+
+def compute_profile_for_genome_browser(tpx_file, chr):
+    TIME = datetime.now()
+    profile_current = defaultdict(lambda: 0)
+    max_len = 0
+    for line in tpx_file:
+        b, e, stability = line
+        b=int(b)
+        e=int(e)
+        for i in range(b,e):
+            profile_current[i]+=1
+            if (e > max_len):
+                max_len = e
+    #Convert into list of intervals
+    intervals = []
+    previous_start = 0
+    previous_count = None
+    TIME = datetime.now()
+    positions = [int(x) for x in profile_current.keys()]
+    positions.sort()
+    min_ = positions[0]
+    for i in positions:
+        count = profile_current[i]
+        if (previous_count != count):
+            if (previous_count is not None):
+                intervals.append(f"{chr} {previous_start} {i-1} {previous_count}\n")
+            if (previous_count is not None or count != 0):
+                previous_count = count
+                previous_start = i
+    intervals.append(f"{chr} {previous_start} {max_len-1} {previous_count}\n")
+    return intervals, min_, max_len

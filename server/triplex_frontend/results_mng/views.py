@@ -15,7 +15,6 @@ from triplex_frontend.triplex_exceptions import DidNotReceiveInputFilesException
 
 #Input body as key-value form-data with keys:
 STABILITY = "STABILITY"
-#STABILITY_INDEXED = "STABILITY_INDEXED"
 SUMMARY = "SUMMARY"
 PROFILE = "PROFILE"
 SECONDARY_STRUCTURE = "SECONDARY_STRUCTURE"
@@ -41,9 +40,7 @@ class SubmitResult(APIView):
             summary = request.data[SUMMARY]
             profile = request.data[PROFILE]
             secondary_struct = request.data[SECONDARY_STRUCTURE]
-            profile_random = None; stability_indexed = None;
-            """if (STABILITY_INDEXED in request.data):
-                stability_indexed = request.data[STABILITY_INDEXED]"""
+            profile_random = None
             if (PROFILE_RANDOM in request.data):
                 profile_random = request.data[PROFILE_RANDOM]
 
