@@ -45,7 +45,10 @@ class ResultsMngServices:
         is_bed = is_bed or dsDNA_precomputed is not None
 
         #Compute hash value of input data
-        hashed = get_hash([ssRNA_fasta,dsDNA_fasta], [triplex_params, {"id":ssRNA_id, "species": species, "dsDNA_precomputed":dsDNA_precomputed, "randomization": use_randomization}])
+        triplex_params_stringified = {}
+        for k in triplex_params.keys():
+            triplex_params_stringified[k] = str(triplex_params[k])
+        hashed = get_hash([ssRNA_fasta,dsDNA_fasta], [triplex_params_stringified, {"id":ssRNA_id, "species": species, "dsDNA_precomputed":dsDNA_precomputed, "randomization": use_randomization}])
     
         #initialize new data section, keep track of sequence and id, used later for computing the conservation
         job = JobData()
