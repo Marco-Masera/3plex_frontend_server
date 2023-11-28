@@ -220,15 +220,15 @@ track type=bedGraph name="{trace_name}" description="Number of tpx with stabilit
         if (dsDNA_id is None):
             query = """
             SELECT * FROM TPX_Stability
-            WHERE Stability >= ? AND tfo_start >= ? AND tfo_end <= ?
+            WHERE Stability >= ? AND tfo_start <= ? AND tfo_end >= ?
             """
-            cursor.execute(query, (stability_th, start, end))
+            cursor.execute(query, (stability_th, end, start))
         else:
             query = """
             SELECT * FROM TPX_Stability
-            WHERE Stability >= ? AND tfo_start >= ? AND tfo_end <= ? AND Duplex_ID = ?
+            WHERE Stability >= ?AND tfo_start <= ? AND tfo_end >= ? AND Duplex_ID = ?
             """
-            cursor.execute(query, (stability_th, start, end, dsDNA_id))
+            cursor.execute(query, (stability_th, end, start, dsDNA_id))
         # Fetch all the records that satisfy the conditions
         records = cursor.fetchall()
         conn.close()

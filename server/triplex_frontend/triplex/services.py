@@ -3,6 +3,8 @@ from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUpload
 from django.conf import settings
 import requests
 from io import StringIO
+import datetime
+import hmac
 from triplex_frontend.triplex_exceptions import *
 
 #Input body as key-value form-data with keys:
@@ -19,7 +21,7 @@ EMAIL_FIELD = "EMAIL"
 SPECIES_FIELD = "SPECIES"
 
 default_triplex_params = {
-    'min_len': 8,
+    'min_len': 10,
     'max_len': -1,
     'error_rate': 20,
     'guanine_rate': 40,
@@ -46,6 +48,12 @@ triplex_params_bounds = {
     'consecutive_errors': [0, None],
     'SSTRAND': [0, 100]
 }
+
+def get_time_based_otp(token):
+    timestamp = f"{datetime.datetime.now(datetime.timezone.utc):%Y-%m-%d %H}"
+    h = hmac.new(bytes(settings.HMAC_KEY, 'utf-8'), msg=bytes(token+timestamp, 'utf-8'), digestmod='sha256')
+    digested = h.hexdigest()
+    return digested
 
 class TriplexService:
     
@@ -75,6 +83,7 @@ class TriplexService:
             dsDNA_fasta.seek(0)
         url = settings.BACKEND_URL+f"/submit/{token}"
         query_params = []
+        query_params.append(f"hmac={get_time_based_otp(token)}")
         if (species is not None):
             query_params.append(f"species={species}")
         if (dsDNA_precomputed is not None):
