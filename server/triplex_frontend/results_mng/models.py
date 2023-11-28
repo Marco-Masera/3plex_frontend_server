@@ -121,7 +121,7 @@ class JobData(models.Model):
     cleaned_up = models.BooleanField(default=False)
 
     def semantic_equals(self, other_job):
-        #Returns true if the 2 jobs are semantically equals
+        #Returns true if the 2 jobs are semantically equals   
         return (
             #Check equality of dsDNA_fasta files
             safe_file_cmp(self.dsDNA_fasta, other_job.dsDNA_fasta) 
@@ -134,7 +134,7 @@ class JobData(models.Model):
             #Check equality of dsDNA_precomputed_target
             and (self.dsDNA_precomputed_target == other_job.dsDNA_precomputed_target)
             #Check equality of use_random field
-            and (self.use_random == other_job.use_random)
+            and (str(self.use_random) == str(other_job.use_random))
             )
 
     def __str__(self):
