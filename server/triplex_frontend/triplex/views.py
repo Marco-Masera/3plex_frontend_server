@@ -77,6 +77,7 @@ class SubmitjobController(APIView):
 
 
 class JobMailController(APIView):
+    authentication_classes = (CsrfExemptSessionAuthentication, BasicAuthentication)
     def post(self, request, *args, **kwargs):
         try:
             token = kwargs.get("token")
