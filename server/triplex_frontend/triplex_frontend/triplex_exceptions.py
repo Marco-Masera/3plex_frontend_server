@@ -1,5 +1,6 @@
 from triplex_frontend.responses import Responses
 from rest_framework import status
+from rest_framework.response import Response
 
 class TriplexException(Exception):
     def handle(self):
@@ -116,3 +117,9 @@ class InputFileTooBig(TriplexException):
         return Responses.generic_failure(
             message=self.message,
             errorCode= status.HTTP_400_BAD_REQUEST)
+
+class TPXNotFound(TriplexException):
+    def handle(self):
+        return Responses.generic_failure(
+            message="No tpx found",
+            errorCode= status.HTTP_404_NOT_FOUND)

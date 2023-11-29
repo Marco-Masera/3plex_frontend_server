@@ -8,3 +8,6 @@ server/local/data/*
 server/triplex_frontend/static_data/mmusculus/*
 server/triplex_frontend/results_mng/migrations/*
 **/__pycache__/*
+backup_utils/*
+!backup_utils/run_backup.sh
+!backup_utils/readme.MD
