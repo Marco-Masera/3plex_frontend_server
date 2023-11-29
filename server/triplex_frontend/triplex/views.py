@@ -222,3 +222,22 @@ class ProfileUCSCController(APIView):
             return Responses.success(result)
         except TriplexException as e:
             return e.handle()
+
+class TPX_to_excel(APIView):
+    def get(self, request, *args, **kwargs):
+        try:
+            job = ResultsMngServices.get_by_token(kwargs.get("token"))
+            dsDNAID = request.query_params.get("dsDNAID")
+            stability = request.query_params.get("stability")
+            start = request.query_params.get("start")
+            end = request.query_params.get("end")
+            if (stability is None or start is None or end is None) and (dsDNAID is None):
+                raise TPXNotFound()
+
+            if not (stability is None or start is None or end is None):
+                tpx = VisualizationUtils.find_tpx_in_interval(job, start, end, stability, dsDNA_id=dsDNAID)
+            else:
+                tpx = VisualizationUtils.get_tpx_by_dsDNAID(job, dsDNAID, stability)
+            return Responses.binary(VisualizationUtils.export_tpx_in_excel(tpx))
+        except TriplexException as e:
+            return e.handle()

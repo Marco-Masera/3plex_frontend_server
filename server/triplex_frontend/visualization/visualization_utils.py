@@ -9,8 +9,10 @@ from visualization import genomeToTranscriptMapper as gttm
 import sqlite3
 from datetime import datetime
 import gzip
+import xlsxwriter
 from visualization.tfo_profile import compute_profile_from_tpx, compute_profile_for_genome_browser
-
+from io import BytesIO
+from triplex_frontend.triplex_exceptions import TPXNotFound
 
 def genomic_intervalsToTranscript(exons, bb, strand):
     repeats = []
@@ -33,26 +35,6 @@ def genomic_intervalsToTranscript(exons, bb, strand):
             converted.append((transcript_coords[0], transcript_coords[1], line[2].split("\t")[0]))
     return converted
 
-def get_tpx_by_dsDNAID(data, dsDNA_id):
-    def dict_factory(cursor, row):
-        d = {}
-        for idx, col in enumerate(cursor.description):
-            d[col[0]] = row[idx]
-        return d
-    if not (os.path.isfile(data.stability_indexed.path)):
-        return []
-    conn = sqlite3.connect(data.stability_indexed.path)
-    conn.row_factory = dict_factory
-    cursor = conn.cursor()
-    query = """
-        SELECT * FROM TPX_Stability
-        WHERE Duplex_ID = ?
-    """
-    cursor.execute(query, (dsDNA_id ,))
-    # Fetch all the records that satisfy the conditions
-    records = cursor.fetchall()
-    conn.close()
-    return records
 
 def get_conservation_by_transcript_id(transcript):
     transcript_id = transcript.id
@@ -87,6 +69,49 @@ def get_repeats_by_transcript_id(transcript):
 
 class VisualizationUtils:
 
+    def get_tpx_by_dsDNAID(data, dsDNA_id, stability=None):
+        def dict_factory(cursor, row):
+            d = {}
+            for idx, col in enumerate(cursor.description):
+                d[col[0]] = row[idx]
+            return d
+        if not (os.path.isfile(data.stability_indexed.path)):
+            return []
+        conn = sqlite3.connect(data.stability_indexed.path)
+        conn.row_factory = dict_factory
+        cursor = conn.cursor()
+        if (stability is None):
+            query = """
+                SELECT * FROM TPX_Stability
+                WHERE Duplex_ID = ?
+            """
+            cursor.execute(query, (dsDNA_id ,))
+        else:
+            query = """
+                SELECT * FROM TPX_Stability
+                WHERE Duplex_ID = ? AND Stability >= ?
+            """
+            cursor.execute(query, (dsDNA_id , stability))
+        # Fetch all the records that satisfy the conditions
+        records = cursor.fetchall()
+        conn.close()
+        return records
+
+    def export_tpx_in_excel(tpx):
+        output = BytesIO()
+        workbook = xlsxwriter.Workbook(output)
+        worksheet = workbook.add_worksheet()
+
+
+        for row, element in enumerate(tpx):
+            to_exp = [element['Duplex_ID'], element['tfo_start'], element['tfo_end'], element['TTS_start'], element['TTS_end'], 
+            element['Error_rate'], element['Errors'],element['Guanine_rate'],element['Motif'],element['Orientation'],
+            element['Score'], element['Stability'], element['Strand'], element['Representation']]
+            for column, elem in enumerate(to_exp):
+                worksheet.write(row, column, elem)
+        workbook.close()
+        return output.getvalue()
+
     def get_data_for_visuals(data, token, dsDNA_id = None):
         #Returns urls of available data
         def clean_name(name):
@@ -98,7 +123,7 @@ class VisualizationUtils:
                 available["tfo_profile"] = data.profile.url
                 available["profile_dynamic"] = False
         else:
-            available["tpx"] = get_tpx_by_dsDNAID(data, dsDNA_id)
+            available["tpx"] = VisualizationUtils.get_tpx_by_dsDNAID(data, dsDNA_id)
             available["tfo_profile"] = f"jobs/{token}/{dsDNA_id}/profile"
             available["profile_dynamic"] = True
             
@@ -226,7 +251,7 @@ track type=bedGraph name="{trace_name}" description="Number of tpx with stabilit
         else:
             query = """
             SELECT * FROM TPX_Stability
-            WHERE Stability >= ?AND tfo_start <= ? AND tfo_end >= ? AND Duplex_ID = ?
+            WHERE Stability >= ? AND tfo_start <= ? AND tfo_end >= ? AND Duplex_ID = ?
             """
             cursor.execute(query, (stability_th, end, start, dsDNA_id))
         # Fetch all the records that satisfy the conditions
