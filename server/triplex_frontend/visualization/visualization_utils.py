@@ -199,7 +199,6 @@ class VisualizationUtils:
         TIME = datetime.now()
         values, min_, max_ = compute_profile_for_genome_browser(tpx, chr_)
         header = f"""browser position {chr_}:{min_}-{max_}
-browser hide all
 browser pack refGene encodeRegions
 browser full altGraph
 #	300 base wide bar graph, autoScale is on by default == graphing

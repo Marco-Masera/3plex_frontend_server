@@ -17,7 +17,7 @@ class Token(models.Model):
     job = models.ForeignKey(JobData, on_delete=models.CASCADE)
 
     def __str__(self):
-        return f"{self.submission_date} - {self.job_name} - {self.token}"
+        return f"{self.submission_date} - {self.job_name} - {self.token} - {self.job.state}"
 
     @property
     def species(self):
