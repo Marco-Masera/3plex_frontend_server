@@ -144,6 +144,9 @@ class JobData(models.Model):
         temp_files = JobUCSCTrack.objects.filter(job=self)
         for t in temp_files:
             t.delete()
+        summary_web = SummaryWebVersion.objects.filter(job=self)
+        for t in summary_web:
+            t.delete()
             
         dir_ = None
         if self.ssRNA_fasta:
