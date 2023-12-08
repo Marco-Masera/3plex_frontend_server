@@ -35,7 +35,11 @@ class DnaTargetSites(models.Model):
     def dsDNA_url(self):
         return f"/3plex/results/ds_dna/{self.species}/{self.filename}.fa"
 
-
+class GeneInDnaTargetSite(models.Model):
+    class Meta:
+        indexes = [models.Index(fields=['name']),]
+    target = models.ForeignKey(DnaTargetSites, on_delete=models.CASCADE)
+    name = models.CharField(max_length=32)
 
 class LongestTranscript(models.Model):
     id = models.CharField(max_length=256, primary_key=True, unique=True, null=False, blank=False)

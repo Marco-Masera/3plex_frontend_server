@@ -4,6 +4,7 @@ from .views import *
 
 urlpatterns = [
     path('submitjob/', SubmitjobController.as_view()),
+    path('submit_promoter_test/', SubmitjobPromoterStabilityTestController.as_view()),
     path('jobs/<str:token>/mail/<str:mail>', JobMailController.as_view()),
     path('3plex_default_params', TriplexDefaultParams.as_view()),
     path('checkjob/<str:token>', CheckjobController.as_view()),

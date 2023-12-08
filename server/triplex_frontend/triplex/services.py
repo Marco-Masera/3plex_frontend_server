@@ -6,6 +6,7 @@ from io import StringIO
 import datetime
 import hmac
 from triplex_frontend.triplex_exceptions import *
+from results_mng.models import GeneInDnaTargetSite
 
 #Input body as key-value form-data with keys:
 SSRNA_FASTA = "SSRNA_FASTA" #Fasta file as ssRNA input
@@ -144,7 +145,7 @@ class TriplexService:
         ssRNA_fasta = InMemoryUploadedFile(new_file,'file',"ssRNA.fa",None,new_file.tell(),None)
         return ssRNA_fasta
 
-    def parse_request_params(request):
+    def parse_request_params_normal_job(request):
         #Check ssRNA:
         ssRNA_fasta = None; dsDNA_fasta = None; dsDNA_bed = None; dsDNA_precomputed = None
         species = None; ssRNA_id = None; email=None; jobName = None
@@ -195,6 +196,61 @@ class TriplexService:
                 raise SpeciesNotSupportedException()
         
         return ssRNA_fasta, dsDNA_fasta, dsDNA_bed, dsDNA_precomputed, species, ssRNA_id, email, jobName, use_randomization
+
+    def parse_request_params_promoter_stability_test(request):
+        #Check ssRNA:
+        ssRNA_fasta = None
+        species = None; ssRNA_id = None; email=None; jobName = None
+
+        if (SSRNA_FASTA in request.data):
+            ssRNA_fasta = request.data[SSRNA_FASTA]
+        elif (SSRNA_STRING in request.data):
+            if (len(request.data[SSRNA_STRING]) > settings.SSRNA_MAX_SIZE):
+                raise InputFileTooBig(f"Your ssRNA string file exceed our limit of {settings.SSRNA_MAX_SIZE} characters")
+            buff = StringIO(request.data[SSRNA_STRING])
+            buff.seek(0)
+            ssRNA_fasta = InMemoryUploadedFile(buff,'file',"ssRNA",None,buff.tell(),None)
+        elif (SSRNA_ID in request.data):
+            ssRNA_id = request.data["SSRNA_ID"]
+        else:
+            raise SsRnaNotProvidedException()
+        if ("putative_genes" in request.data):
+            putative_genes = request.data["putative_genes"].split(",")
+        else:
+            raise DsDnaNotProvidedException()
+        if ("background_genes" in request.data):
+            background_genes = request.data["background_genes"].split(",")
+        else:
+            raise DsDnaNotProvidedException()
+        #Check extra field
+        if (EMAIL_FIELD in request.data):
+            email = request.data[EMAIL_FIELD]
+        else: 
+            email = None
+        if (NAME_FIELD in request.data): 
+            jobName = request.data[NAME_FIELD]; 
+        else:
+            jobName = None
+        if (SPECIES_FIELD in request.data):
+            species = request.data[SPECIES_FIELD]
+            if (not (species,species) in  settings.ALLOWED_SPECIES):
+                raise SpeciesNotSupportedException()
+        
+        return ssRNA_fasta, putative_genes, background_genes, species, ssRNA_id, email, jobName
+
+
+    def validate_genes_for_promoter_stability_test(putative_genes, background_genes):
+        pass 
+        #Check that background genes are included in putative
+        if not (set(background_genes).issubset(set(putative_genes))):
+            raise BackgroundGenesNotIncludedInPutative()
+        #Check that all genes are included in MANE
+        not_included = []
+        for elem in putative_genes:
+            if (GeneInDnaTargetSite.objects.filter(name=elem).count()==0):
+                not_included.append(elem)
+        if (len(not_included)>0):
+            raise BackgroundGenesNotIncludedInMANE(not_included) 
 
     def validate_and_rename_ssRNA_fasta(ssRNA_fasta):
         if (ssRNA_fasta is not None):

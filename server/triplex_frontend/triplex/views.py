@@ -28,7 +28,7 @@ class SubmitjobController(APIView):
         tokenObject = None; jobData = None;
         try:
             #Parse request parameters
-            ssRNA_fasta, dsDNA_fasta, dsDNA_bed, dsDNA_precomputed, species, ssRNA_id, email, jobName, use_randomization = TriplexService.parse_request_params(request)
+            ssRNA_fasta, dsDNA_fasta, dsDNA_bed, dsDNA_precomputed, species, ssRNA_id, email, jobName, use_randomization = TriplexService.parse_request_params_normal_job(request)
             #Validate and rename ssRNA_fasta
             ssRNA_fasta = TriplexService.validate_and_rename_ssRNA_fasta(ssRNA_fasta)
             #Validate and rename dsDNA file(s)
@@ -75,6 +75,59 @@ class SubmitjobController(APIView):
                     pass
             raise e
 
+class SubmitjobPromoterStabilityTestController(APIView):
+    parser_classes = [parsers.MultiPartParser] 
+    authentication_classes = (CsrfExemptSessionAuthentication, BasicAuthentication)
+    def post(self, request, *args, **kwargs):
+        tokenObject = None; jobData = None;
+        try:
+            #Parse request parameters
+            ssRNA_fasta, putative_genes, background_genes, species, ssRNA_id, email, jobName = TriplexService.parse_request_params_promoter_stability_test(request)
+            #Validate and rename ssRNA_fasta
+            ssRNA_fasta = TriplexService.validate_and_rename_ssRNA_fasta(ssRNA_fasta)
+            #Validate genes
+            TriplexService.validate_genes_for_promoter_stability_test(putative_genes, background_genes)
+            #Format triplex_params
+            triplex_params = TriplexService.parse_3plex_params(request.data)
+            #Validate them 
+            TriplexService.validate_triplex_params(triplex_params)
+            
+            #Initialize data section to receive results
+            #jobData = ResultsMngServices.initialize_or_retrieve_data_section(ssRNA_fasta, dsDNA_file, dsDNA_precomputed, 
+            #    triplex_params, ssRNA_id, species, use_randomization=use_randomization, is_bed = is_bed_dsDNA)
+            #If the ssRNA is specified by ID, open the corresponding file
+            if (ssRNA_fasta is None):
+                ssRNA_fasta = open(jobData.ssRNA_id.ssRNA_fasta_path, 'rb')
+            
+            #Get new token
+            #tokenObject = TokenQueueService.get_new_token(name=jobName, email=email, jobData=jobData)
+            #Submit job to backend server
+            """if (tokenObject.state == "Created"):
+                ResultsMngServices.set_job_submitted(jobData)
+                TriplexService.submit_job(ssRNA_fasta, dsDNA_file, dsDNA_precomputed, tokenObject.token, triplex_params, species, use_randomization, is_bed=is_bed_dsDNA)
+            elif (tokenObject.state == "Ready"):
+                TokenQueueService.notify_user_email_job_completed(tokenObject)"""
+            return Responses.success({"token": tokenObject})
+        except TriplexException as e:
+            """if (tokenObject is not None):
+                tokenObject.delete()
+            if (jobData is not None):
+                try:
+                    ResultsMngServices.delete_data_if_orphan(jobData)
+                except Exception:
+                    pass"""
+            return e.handle()
+        except Exception as e:
+            if (tokenObject is not None):
+                pass
+                #tokenObject.delete()
+            if (jobData is not None):
+                try:
+                    pass
+                    #ResultsMngServices.delete_data_if_orphan(jobData)
+                except Exception:
+                    pass
+            raise e
 
 class JobMailController(APIView):
     authentication_classes = (CsrfExemptSessionAuthentication, BasicAuthentication)
