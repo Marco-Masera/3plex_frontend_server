@@ -123,3 +123,17 @@ class TPXNotFound(TriplexException):
         return Responses.generic_failure(
             message="No tpx found",
             errorCode= status.HTTP_404_NOT_FOUND)
+
+class BackgroundGenesNotIncludedInPutative(TriplexException):
+    def handle(self):
+        return Responses.generic_failure(
+            message="Background genes are not included in putative genes",
+            errorCode= status.HTTP_400_BAD_REQUEST)
+class BackgroundGenesNotIncludedInMANE(TriplexException):
+    def __init__(self, genes):
+        self.genes = genes 
+        super().__init__(self)
+    def handle(self): #notIncludedInMANE
+        return Responses.personalized_failure(
+            {"notIncludedInMANE": self.genes},
+            errorCode= status.HTTP_400_BAD_REQUEST)

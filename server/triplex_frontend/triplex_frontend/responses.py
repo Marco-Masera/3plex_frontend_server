@@ -35,6 +35,11 @@ class Responses:
         data = json.dumps({ 'success': False, 'error': message }, cls=ExtendedEncoder)
         return Response(data, status=errorCode)
 
+    def personalized_failure(data, errorCode: status = status.HTTP_500_INTERNAL_SERVER_ERROR):
+        data["success"] = False
+        data = json.dumps(data, cls=ExtendedEncoder)
+        return Response(data, status=errorCode)
+
     def binary(data):
         return HttpResponse(data, content_type="application/x-binary")
     

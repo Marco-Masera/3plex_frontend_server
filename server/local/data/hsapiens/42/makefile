@@ -51,3 +51,6 @@ MANE.GRCh38.v1.1.refseq_genomic.Symbol.tss.1500_500.fa: $(GENCODE_REFENRECE_DATA
 	cp  $(GENCODE_REFENRECE_DATA)/MANE.GRCh38.v1.1.refseq_genomic.Symbol.tss.1500_500.fa .
 load_MANE.GRCh38.v1.1.refseq_genomic.Symbol.tss.1500_500.fa: MANE.GRCh38.v1.1.refseq_genomic.Symbol.tss.1500_500.fa
 	cp MANE.GRCh38.v1.1.refseq_genomic.Symbol.tss.1500_500.fa ${MEDIA_ROOT}/ds_dna/hsapiens/MANE.GRCh38.v1.1.refseq_genomic.Symbol.tss.1500_500.fa
+#populate database with MANE genes
+load_genes_from_mane_in_db: ${MEDIA_ROOT}/ds_dna/hsapiens/MANE.GRCh38.v1.1.refseq_genomic.Symbol.tss.1500_500.fa
+	load_genes_from_mane_in_db.py ${MEDIA_ROOT}/ds_dna/hsapiens/MANE.GRCh38.v1.1.refseq_genomic.Symbol.tss.1500_500.fa MANE
