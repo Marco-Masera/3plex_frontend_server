@@ -99,9 +99,11 @@ class SubmitjobPromoterStabilityTestController(APIView):
             if (ssRNA_fasta is None):
                 ssRNA_fasta = open(jobData.ssRNA_id.ssRNA_fasta_path, 'rb')
             
-            #Get new token
-            #tokenObject = TokenQueueService.get_new_token(name=jobName, email=email, jobData=jobData)
-            #Submit job to backend server
+            #Process:
+            #1- Generate token and data structure to host data - memorize ssRNA and gene lists
+            #  1.1- Add this new class to stuff to be cleaned up by the cleanup service
+            #2- Send request to backend server
+            #3-Prepare to receive data
             """if (tokenObject.state == "Created"):
                 ResultsMngServices.set_job_submitted(jobData)
                 TriplexService.submit_job(ssRNA_fasta, dsDNA_file, dsDNA_precomputed, tokenObject.token, triplex_params, species, use_randomization, is_bed=is_bed_dsDNA)
