@@ -14,10 +14,15 @@ class Token(models.Model):
     submission_date = models.DateTimeField(auto_now_add=True, auto_now=False)
     job_name = models.CharField(max_length=64, null=True, default=None)
     email_address = models.EmailField(max_length=254, null=True, default=None)
-    job = models.ForeignKey(JobData, on_delete=models.CASCADE)
+    standard_job = models.ForeignKey(JobData, on_delete=models.CASCADE)
+    #promoter_stability_test_job = models.ForeignKey(JobData, on_delete=models.CASCADE)
+
+    @property
+    def job(self):
+        return self.standard_job
 
     def __str__(self):
-        return f"{self.submission_date} - {self.job_name} - {self.token}"
+        return f"{self.submission_date} - {self.job_name} - {self.token} - {self.job.state}"
 
     @property
     def species(self):

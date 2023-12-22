@@ -8,7 +8,7 @@ from django.conf import settings
 class TokenQueueService:
     
     def get_new_token(name=None, email=None, jobData = None) -> Token:
-        return Token.objects.create(job_name=name, email_address=email, job = jobData) 
+        return Token.objects.create(job_name=name, email_address=email, standard_job = jobData) 
 
     def find_token(token: str) -> Token:
         try:
@@ -34,7 +34,7 @@ class TokenQueueService:
         Token.objects.filter(token=token).delete()
 
     def get_tokens_by_job(job):
-        return Token.objects.filter(job=job)
+        return Token.objects.filter(standard_job=job)
 
     def notify_user_email_job_completed(token: Token):
         if (token.email_address is None):
@@ -69,12 +69,12 @@ class TokenQueueService:
         )
 
     def notify_all_users_email_job_completed(job):
-        users = Token.objects.filter(job=job)
+        users = TokenQueueService.get_tokens_by_job(job)
         for user in users:
             TokenQueueService.notify_user_email_job_completed(user)
 
     def notify_all_users_email_job_failed(job):
-        users = Token.objects.filter(job=job)
+        users = TokenQueueService.get_tokens_by_job(job)
         for user in users:
             TokenQueueService.notify_user_email_job_failed(user)
         
