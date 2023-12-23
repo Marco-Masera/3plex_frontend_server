@@ -208,7 +208,7 @@ class JobData(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.base_path:
-            self.base_path = generate_random_alphanumeric(32)
+            self.base_path = "standard" + generate_random_alphanumeric(32)
             # using your function as above or anything else
             failures = 0
             while True:

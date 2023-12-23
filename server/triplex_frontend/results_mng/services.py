@@ -14,13 +14,6 @@ from results_mng.hash_lib import get_hash
 import sqlite3
 
 class ResultsMngServices:
-    #Retrieve data from token (string)
-    def get_by_token(token: str):
-        job = TokenQueueService.find_token(token).job
-        if (job is None):
-            raise DataDoesNotExistException()
-        return job
-
     #Delete data object if no token exists associated to it (mostly for exception handling)
     def delete_data_if_orphan(jobData: JobData):
         if (len(TokenQueueService.get_tokens_by_job(jobData))==0):
@@ -84,13 +77,7 @@ class ResultsMngServices:
             return existingJob
         return job
     
-    def receive_data(token: str, stability, summary, profile, secondary_struct, profile_random) -> JobData:
-        #Note: data must be initialized or this will return DataDoesNotExistException
-        tokenObject = TokenQueueService.find_token(token)
-        data = tokenObject.job
-
-        if (not TokenQueueService.token_is_state_submitted(tokenObject)):
-            raise TokenIsNotStateSubmittedException()
+    def receive_data(data: JobData, stability, summary, profile, secondary_struct, profile_random) -> JobData:
         #Set file fields        
         data.stability = stability
         data.summary = summary
@@ -118,13 +105,12 @@ class ResultsMngServices:
         TokenQueueService.notify_all_users_email_job_completed(data)
         return data
 
-    def update_data_last_date(token: str):
-        jobData = ResultsMngServices.get_by_token(token)
+    def update_data_last_date(jobData: JobData):
         jobData.date = datetime.now()
         jobData.save()
 
-    def get_data_by_token(token:str):
-        data = ResultsMngServices.get_by_token(token)
+
+    def get_data(data: JobData):
         #Returns urls of available data
         def clean_name(name):
             return name.split("/")[-1]
@@ -147,12 +133,10 @@ class ResultsMngServices:
             available["Logs_STDOUT"] = data.rawLogsSTDOUT.url
         return available
 
-    def get_triplex_params(token:str):
-        data = ResultsMngServices.get_by_token(token)
-        return data.triplex_params
+    def get_triplex_params(job: JobData):
+        return job.triplex_params
     
-    def set_job_failed(token: str, STDOUT = None, STDERR = None):
-        jobObject = ResultsMngServices.get_by_token(token)
+    def set_job_failed(jobObject: JobData, STDOUT = None, STDERR = None):
         jobObject.state = "Failed"
 
         if (STDOUT is not None):

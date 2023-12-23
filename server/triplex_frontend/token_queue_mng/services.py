@@ -1,4 +1,5 @@
 from token_queue_mng.models import *
+from promoter_stability_test.models import StabilityTestJobData
 from django.core.exceptions import ObjectDoesNotExist
 from triplex_frontend.triplex_exceptions import TokenDoesNotExistException
 from typing import Optional
@@ -8,7 +9,11 @@ from django.conf import settings
 class TokenQueueService:
     
     def get_new_token(name=None, email=None, jobData = None) -> Token:
-        return Token.objects.create(job_name=name, email_address=email, standard_job = jobData) 
+        if (isinstance(jobData, JobData)):
+            return Token.objects.create(job_name=name, email_address=email, standard_job = jobData)
+        elif (isinstance(jobData, StabilityTestJobData)):
+            return Token.objects.create(job_name=name, email_address=email, promoter_stability_test_job = jobData)
+        
 
     def find_token(token: str) -> Token:
         try:
@@ -26,15 +31,16 @@ class TokenQueueService:
     
     def check_token_ready(token: str):
         TokenQueueService.find_token(token).check_state_ready()
-
-    def token_is_state_submitted(token):
-        return token.state == "Submitted"
     
     def remove_token(token: str):
         Token.objects.filter(token=token).delete()
 
     def get_tokens_by_job(job):
-        return Token.objects.filter(standard_job=job)
+        #TODO compatibility with other types of jobs
+        if (isinstance(job, JobData)):
+            return Token.objects.filter(standard_job=job)
+        if (isinstance(job, StabilityTestJobData)):
+            return Token.objects.filter(promoter_stability_test_job=job)
 
     def notify_user_email_job_completed(token: Token):
         if (token.email_address is None):
@@ -87,3 +93,26 @@ class TokenQueueService:
     def get_dbds(token: Token):
         dbds = DBD.objects.filter(token=token).order_by('start')
         return [ [dbd.start, dbd.end] for dbd in dbds ]
+
+    def getDataFromToken(token: Token):
+        #TODO implement for other type of jobs
+        if (token.type_of_job == "standard"):
+            if (token_object.check_state_ready() or token_object.check_state_failed()):
+                data = ResultsMngServices.getData(token.job)
+                params = ResultsMngServices.get_triplex_params(token.job)
+                ResultsMngServices.update_data_last_date(token.job)
+            else:
+                data = {}
+                params = ResultsMngServices.get_triplex_params(token.job)
+        elif (token.type_of_job == "promoter_stability_test"):
+            if (token_object.check_state_ready() or token_object.check_state_failed()):
+                data = PromoterStabilityTestServices.getData(token.job)
+                params = PromoterStabilityTestServices.get_triplex_params(token.job)
+                PromoterStabilityTestServices.update_data_last_date(token.job)
+            else:
+                data = {}
+                params = PromoterStabilityTestServices.get_triplex_params(token.job)
+        else:
+            data = {}
+            params = {}
+        return data, params

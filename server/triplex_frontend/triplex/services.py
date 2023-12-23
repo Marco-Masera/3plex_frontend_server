@@ -78,6 +78,28 @@ class TriplexService:
             if (bounds[1] is not None and bounds[1] < value):
                 raise TriplexParamOutOfBound(f"3plex param {param} is set to {params[param]} but its upper limit is {bounds[1]}")
 
+    def submit_promoter_stability_test_job(token: str, genes_interest, genes_all, ssRNA_fasta, triplex_params, species):
+        ssRNA_fasta.seek(0)
+        url = settings.BACKEND_URL+f"/submit_promoter_test/{token}"
+        query_params = []
+        query_params.append(f"hmac={get_time_based_otp(token)}")
+        if (species is not None):
+            query_params.append(f"species={species}")
+        query_params.append(f"debug={settings.DEBUG}")
+        if (len(query_params)>0):
+            url = f"{url}?{ '&'.join(query_params) }"
+        files = {'ssRNA_fasta': ssRNA_fasta}
+        triplex_tuples = [(key, triplex_params[key]) for key in triplex_params.keys()]
+        triplex_tuples += [("genes_interest", ",".join(genes_interest)), ("genes_all", ",".join(genes_all))]
+        try:
+            r = requests.post(url, files=files, data=triplex_tuples)
+            if (r.status_code != 200):
+                print(f"Bad response: {r.content}")
+                raise CannotSubmitToBackendException()
+        except Exception as e:
+            print(e)
+            raise CannotSubmitToBackendException()
+
     def submit_job(ssRNA_fasta, dsDNA_fasta, dsDNA_precomputed, token: str, triplex_params, species, use_randomization=0, is_bed=False):
         ssRNA_fasta.seek(0)
         if (dsDNA_fasta):
