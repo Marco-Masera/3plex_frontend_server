@@ -58,15 +58,18 @@ class SubmitResult(APIView):
                 raise DidNotReceiveInputFilesException()
 
             ResultsMngServices.receive_data(job, stability, summary, profile, secondary_struct, profile_random)
+            TokenQueueService.notify_all_users_email_job_completed(job)
             ResultsMngServices.update_data_last_date(job)
             
         except TriplexException as e:
             if (job is not None):
                 ResultsMngServices.set_job_failed(job)  
+                TokenQueueService.notify_all_users_email_job_failed(job)
             return e.handle()
         except Exception as e:
             if (job is not None):
                 ResultsMngServices.set_job_failed(job)  
+                TokenQueueService.notify_all_users_email_job_failed(job)
             raise e
         return Responses.success({"ok": "ok"})
     
@@ -90,7 +93,8 @@ class SubmitError(APIView):
             token_object = TokenQueueService.find_token(token)
             token_object.assert_type_standard()
             job = token_object.job
-            ResultsMngServices.set_job_failed(job, stdout, stderr)  
+            ResultsMngServices.set_job_failed(job, stdout, stderr)
+            TokenQueueService.notify_all_users_email_job_failed(job)  
             return Responses.success({"ok": "ok"})
         except TriplexException as e:
             return e.handle()

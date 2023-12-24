@@ -61,14 +61,17 @@ class SubmitResult(APIView):
     STABILITY_NORM_FGSEA_RES, STABILITY_NORM_LEADING_EDGE, STABILITY_NORM_ENRICHMENT_PLOT,
     STABILITY_NORM_STABILITY_COMP_BOXPLOT, STABILITY_NORM_STABILITY_COMP)
             PromoterStabilityTestServices.update_data_last_date(job)
+            TokenQueueService.notify_all_users_email_job_completed(job)
             
         except TriplexException as e:
             if (job is not None):
-                ResultsMngServices.set_job_failed(job)  
+                ResultsMngServices.set_job_failed(job)
+                TokenQueueService.notify_all_users_email_job_failed(job)
             return e.handle()
         except Exception as e:
             if (job is not None):
-                ResultsMngServices.set_job_failed(job)  
+                ResultsMngServices.set_job_failed(job) 
+                TokenQueueService.notify_all_users_email_job_failed(job) 
             raise e
         return Responses.success({"ok": "ok"})
     
@@ -93,6 +96,7 @@ class SubmitError(APIView):
             token_object.assert_type_promoter_test()
             job = token_object.job
             PromoterStabilityTestServices.set_job_failed(job, stdout, stderr)  
+            TokenQueueService.notify_all_users_email_job_failed(job)
             return Responses.success({"ok": "ok"})
         except TriplexException as e:
             return e.handle()

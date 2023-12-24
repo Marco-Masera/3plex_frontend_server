@@ -62,7 +62,7 @@ class SubmitjobController(APIView):
                 tokenObject.delete()
             if (jobData is not None):
                 try:
-                    ResultsMngServices.delete_data_if_orphan(jobData)
+                    TokenQueueService.delete_data_if_orphan(jobData)
                 except Exception:
                     pass
             return e.handle()
@@ -71,7 +71,7 @@ class SubmitjobController(APIView):
                 tokenObject.delete()
             if (jobData is not None):
                 try:
-                    ResultsMngServices.delete_data_if_orphan(jobData)
+                    TokenQueueService.delete_data_if_orphan(jobData)
                 except Exception:
                     pass
             raise e
@@ -83,11 +83,11 @@ class SubmitjobPromoterStabilityTestController(APIView):
         tokenObject = None; jobData = None;
         try:
             #Parse request parameters
-            ssRNA_fasta, putative_genes, background_genes, species, ssRNA_id, email, jobName = TriplexService.parse_request_params_promoter_stability_test(request)
+            ssRNA_fasta, all_genes, interest_genes, species, ssRNA_id, email, jobName = TriplexService.parse_request_params_promoter_stability_test(request)
             #Validate and rename ssRNA_fasta
             ssRNA_fasta = TriplexService.validate_and_rename_ssRNA_fasta(ssRNA_fasta)
             #Validate genes
-            TriplexService.validate_genes_for_promoter_stability_test(putative_genes, background_genes)
+            TriplexService.validate_genes_for_promoter_stability_test(all_genes, interest_genes)
             #Format triplex_params
             triplex_params = TriplexService.parse_3plex_params(request.data)
             #Validate them 
@@ -97,12 +97,12 @@ class SubmitjobPromoterStabilityTestController(APIView):
             if (ssRNA_fasta is None):
                 ssRNA_fasta = open(jobData.ssRNA_id.ssRNA_fasta_path, 'rb')
             
-            data_object = PromoterStabilityTestServices.initialize_data_section(ssRNA_fasta, ssRNA_id, putative_genes, background_genes, species, triplex_params)
+            data_object = PromoterStabilityTestServices.initialize_data_section(ssRNA_fasta, ssRNA_id,  all_genes, interest_genes, species, triplex_params)
             #1- Generate token and data structure to host data - memorize ssRNA and gene lists
             token_object = TokenQueueService.get_new_token(name=jobName, email=email, jobData=data_object)
             #  1.1- Add this new class to stuff to be cleaned up by the cleanup service
             #2- Send request to backend server
-            TriplexService.submit_promoter_stability_test_job(token_object.token, background_genes, putative_genes, ssRNA_fasta, triplex_params, species)
+            TriplexService.submit_promoter_stability_test_job(token_object.token, interest_genes, all_genes, ssRNA_fasta, triplex_params, species)
             PromoterStabilityTestServices.set_job_submitted(data_object)
             return Responses.success({"token": token_object})
         except TriplexException as e:
