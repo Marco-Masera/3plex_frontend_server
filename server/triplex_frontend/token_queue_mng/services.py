@@ -2,6 +2,7 @@ from token_queue_mng.models import *
 from promoter_stability_test.models import StabilityTestJobData
 from django.core.exceptions import ObjectDoesNotExist
 from triplex_frontend.triplex_exceptions import TokenDoesNotExistException
+from promoter_stability_test.services import PromoterStabilityTestServices
 from typing import Optional
 from django.core.mail import send_mail
 from django.conf import settings
@@ -41,6 +42,12 @@ class TokenQueueService:
             return Token.objects.filter(standard_job=job)
         if (isinstance(job, StabilityTestJobData)):
             return Token.objects.filter(promoter_stability_test_job=job)
+        return []
+
+    #Delete data object if no token exists associated to it (mostly for exception handling)
+    def delete_data_if_orphan(jobData):
+        if (len(TokenQueueService.get_tokens_by_job(jobData))==0):
+            jobData.delete()
 
     def notify_user_email_job_completed(token: Token):
         if (token.email_address is None):
@@ -97,7 +104,7 @@ class TokenQueueService:
     def getDataFromToken(token: Token):
         #TODO implement for other type of jobs
         if (token.type_of_job == "standard"):
-            if (token_object.check_state_ready() or token_object.check_state_failed()):
+            if (token.check_state_ready() or token.check_state_failed()):
                 data = ResultsMngServices.getData(token.job)
                 params = ResultsMngServices.get_triplex_params(token.job)
                 ResultsMngServices.update_data_last_date(token.job)
@@ -105,8 +112,8 @@ class TokenQueueService:
                 data = {}
                 params = ResultsMngServices.get_triplex_params(token.job)
         elif (token.type_of_job == "promoter_stability_test"):
-            if (token_object.check_state_ready() or token_object.check_state_failed()):
-                data = PromoterStabilityTestServices.getData(token.job)
+            if (token.check_state_ready() or token.check_state_failed()):
+                data = PromoterStabilityTestServices.get_data(token.job)
                 params = PromoterStabilityTestServices.get_triplex_params(token.job)
                 PromoterStabilityTestServices.update_data_last_date(token.job)
             else:

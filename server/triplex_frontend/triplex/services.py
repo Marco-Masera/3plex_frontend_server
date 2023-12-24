@@ -236,12 +236,12 @@ class TriplexService:
             ssRNA_id = request.data["SSRNA_ID"]
         else:
             raise SsRnaNotProvidedException()
-        if ("putative_genes" in request.data):
-            putative_genes = request.data["putative_genes"].split(",")
+        if ("all_genes" in request.data):
+            all_genes = request.data["all_genes"].split(",")
         else:
             raise DsDnaNotProvidedException()
-        if ("background_genes" in request.data):
-            background_genes = request.data["background_genes"].split(",")
+        if ("interest_genes" in request.data):
+            interest_genes = request.data["interest_genes"].split(",")
         else:
             raise DsDnaNotProvidedException()
         #Check extra field
@@ -258,17 +258,15 @@ class TriplexService:
             if (not (species,species) in  settings.ALLOWED_SPECIES):
                 raise SpeciesNotSupportedException()
         
-        return ssRNA_fasta, putative_genes, background_genes, species, ssRNA_id, email, jobName
+        return ssRNA_fasta, all_genes, interest_genes, species, ssRNA_id, email, jobName
 
 
-    def validate_genes_for_promoter_stability_test(putative_genes, background_genes):
-        pass 
-        #Check that background genes are included in putative
-        if not (set(background_genes).issubset(set(putative_genes))):
+    def validate_genes_for_promoter_stability_test(all_genes, interest_genes):
+        if not (set(all_genes).issubset(set(all_genes))):
             raise BackgroundGenesNotIncludedInPutative()
         #Check that all genes are included in MANE
         not_included = []
-        for elem in putative_genes:
+        for elem in all_genes:
             if (GeneInDnaTargetSite.objects.filter(name=elem).count()==0):
                 not_included.append(elem)
         if (len(not_included)>0):

@@ -1,6 +1,5 @@
 from .models import *
 from triplex_frontend.triplex_exceptions import DataDoesNotExistException, TokenIsNotStateSubmittedException, SsRnaIdNotValidException
-from token_queue_mng.services import TokenQueueService
 from datetime import datetime
 from django.conf import settings
 from django.db.models import Q
@@ -14,11 +13,6 @@ from results_mng.hash_lib import get_hash
 import sqlite3
 
 class ResultsMngServices:
-    #Delete data object if no token exists associated to it (mostly for exception handling)
-    def delete_data_if_orphan(jobData: JobData):
-        if (len(TokenQueueService.get_tokens_by_job(jobData))==0):
-            jobData.delete()
-
 
     def find_job_with_equal_input(hash_string, other_job):
         jobs = JobData.objects.filter(hash_code=hash_string).filter(Q(state="Submitted") | Q(state="Ready")).filter(triplex_params=other_job.triplex_params)
@@ -102,7 +96,6 @@ class ResultsMngServices:
         if (build_summary_web):
             ResultsMngServices.build_summary_web(data)
 
-        TokenQueueService.notify_all_users_email_job_completed(data)
         return data
 
     def update_data_last_date(jobData: JobData):
@@ -147,7 +140,6 @@ class ResultsMngServices:
             jobObject.rawLogsSTDERR.name = f"jobs/{jobObject.base_path}/Logs_STDERR"
 
         jobObject.save()
-        TokenQueueService.notify_all_users_email_job_failed(jobObject)
     
     def cleanup_old_jobs(cleanup_older_than):
         old_jobs = JobData.objects.filter(date__lte=cleanup_older_than, cleaned_up = False)
