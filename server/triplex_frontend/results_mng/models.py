@@ -141,6 +141,10 @@ class JobData(models.Model):
             and (str(self.use_random) == str(other_job.use_random))
             )
 
+    @property
+    def have_visualization(self):
+        return True
+
     def __str__(self):
         return f"{self.date} - {self.state} - {self.hash_code}"
 

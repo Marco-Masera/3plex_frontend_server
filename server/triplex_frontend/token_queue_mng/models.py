@@ -61,6 +61,7 @@ class Token(models.Model):
         dict_["ssRNA_id"] = self.ssRNA_id
         dict_["species"] = self.species
         dict_["type_of_job"] = self.type_of_job
+        dict_["have_visualization"] = self.job.have_visualization
         return dict_
 
     def assert_state_ready(self):

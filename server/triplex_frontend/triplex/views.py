@@ -138,8 +138,8 @@ class CheckjobsByEmailController(APIView):
     def get(self, request, *args, **kwargs):
         try:
             email = kwargs.get("email")
-            tokens = TokenQueueService.get_tokens_by_email(email)
-            return Responses.success(tokens)
+            TokenQueueService.send_mail_with_all_jobs(email)
+            return Responses.success([])
         except TriplexException as e:
             return e.handle()
 
@@ -176,7 +176,7 @@ class VisualsController(APIView):
             token_object.assert_type_standard()
             #Retrieve data for visualizations
             data = VisualizationUtils.get_data_for_visuals(token_object.job, token, dsDNA_id)
-            ResultsMngServices.update_data_last_date(token)
+            ResultsMngServices.update_data_last_date(token_object)
             
             return Responses.success({"job": token_object, "available": data})
         except TriplexException as e:
@@ -195,7 +195,7 @@ class TTS_Sites_Controller(APIView):
             token_object.assert_type_standard()
             data = token_object.job
             values = VisualizationUtils.find_tpx_in_interval(data, start, end, stability, dsDNAID)
-            ResultsMngServices.update_data_last_date(token)
+            ResultsMngServices.update_data_last_date(token_object)
             return Responses.success({"data": values})
         except TriplexException as e:
             return e.handle()
