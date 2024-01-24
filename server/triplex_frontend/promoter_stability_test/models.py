@@ -62,6 +62,10 @@ class StabilityTestJobData(models.Model):
     def __str__(self):
         return f"{self.date} - {self.state}"
 
+    @property
+    def have_visualization(self):
+        return False
+
     def delete_all_files(self):
         dir_ = None
         if self.ssRNA_fasta:

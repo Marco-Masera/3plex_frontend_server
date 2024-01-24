@@ -6,6 +6,7 @@ from promoter_stability_test.services import PromoterStabilityTestServices
 from typing import Optional
 from django.core.mail import send_mail
 from django.conf import settings
+from results_mng.services import ResultsMngServices
 
 class TokenQueueService:
     
@@ -101,11 +102,46 @@ class TokenQueueService:
         dbds = DBD.objects.filter(token=token).order_by('start')
         return [ [dbd.start, dbd.end] for dbd in dbds ]
 
+    def send_mail_with_all_jobs(email: str):
+        tokens = Token.objects.filter(email_address=email).order_by('-submission_date')
+        if (len(tokens)==0):
+            return 
+        #divide tokens between states
+        divided_tokens = {}
+        for token in tokens:
+            if (not token.state in divided_tokens):
+                divided_tokens[token.state] = []
+            divided_tokens[token.state].append(token)
+        #format each one: name, state, link
+        formatted_tokens = {}
+        for state in divided_tokens.keys():
+            formatted_tokens[state] = []
+            for token in divided_tokens[state]:
+                job_name = token.job_name
+                if (job_name is None):
+                    job_name = "N/A"
+                formatted_tokens[state].append(f"Name: {job_name} - submitted: {token.submission_date} - URL: {settings.CLIENT_URL}checkjob/token/{token.token}")
+        #send email
+        message = "3plex: your jobs list:\n"
+        states = ["Submitted", "Ready", "Expired", "Failed"]
+        for state in states:
+            if (state in formatted_tokens):
+                message += f"\n{state}:\n"
+                for string in formatted_tokens[state]:
+                    message += f"{string}\n"
+        send_mail(
+            "3plex: all your jobs",
+            message,
+            settings.EMAIL_HOST_USER,
+            [email],
+            fail_silently=False,
+        )
+
     def getDataFromToken(token: Token):
         #TODO implement for other type of jobs
         if (token.type_of_job == "standard"):
             if (token.check_state_ready() or token.check_state_failed()):
-                data = ResultsMngServices.getData(token.job)
+                data = ResultsMngServices.get_data(token.job)
                 params = ResultsMngServices.get_triplex_params(token.job)
                 ResultsMngServices.update_data_last_date(token.job)
             else:
