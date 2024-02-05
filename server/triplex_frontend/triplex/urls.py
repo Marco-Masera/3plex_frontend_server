@@ -19,4 +19,5 @@ urlpatterns = [
     path('jobs/<str:token>/<str:dsDNAID>/profile', ProfileController.as_view()),
     path('jobs/<str:token>/<str:dsDNAID>/<str:stability>/profile_ucsc', ProfileUCSCController.as_view()),
     path('jobs/<str:token>/tpx.xlsx', TPX_to_excel.as_view()),
+    path('jobs/<str:token>/export_data', ExportjobController.as_view()),
 ]

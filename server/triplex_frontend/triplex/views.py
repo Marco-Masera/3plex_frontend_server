@@ -134,6 +134,16 @@ class CheckjobController(APIView):
         except TriplexException as e:
             return e.handle()
 
+class ExportjobController(APIView):
+    def get(self, request, *args, **kwargs):
+        try:
+            token = kwargs.get("token")
+            #Check that token is ready, else raise exception
+            url = TokenQueueService.export_job_data(TokenQueueService.find_token(token))
+            return Responses.success({"url": url})
+        except TriplexException as e:
+            return e.handle()
+
 class CheckjobsByEmailController(APIView):
     def get(self, request, *args, **kwargs):
         try:

@@ -7,6 +7,9 @@ from typing import Optional
 from django.core.mail import send_mail
 from django.conf import settings
 from results_mng.services import ResultsMngServices
+import tarfile
+import os.path
+import hashlib
 
 class TokenQueueService:
     
@@ -159,3 +162,23 @@ class TokenQueueService:
             data = {}
             params = {}
         return data, params
+
+    def export_job_data(token):
+        token.assert_state_ready()
+        if (token.job.export_hash is not None and len(token.job.export_hash)>0):
+            return token.job.export_tarball.url
+        source_dir = os.path.join(settings.MEDIA_ROOT, "jobs", token.job.base_path)
+        output_filename = os.path.join(settings.MEDIA_ROOT, "jobs", f"export_{token.token}")
+        with tarfile.open(output_filename, "w:gz") as tar:
+            tar.add(source_dir, arcname=os.path.basename(source_dir))
+        #Generate hash of tarball
+        h = hashlib.sha1() #Doesn't need crittographic hashing function
+        with open(output_filename,'rb') as f: 
+            while chunk := f.read(128*h.block_size): 
+                h.update(chunk)
+        hashed = h.hexdigest()
+        if (len(hashed) > 128):
+            hashed = hashed[:128]
+        #Set file in jobData
+        token.job.set_export_file(f"jobs/export_{token.token}", hashed)
+        return token.job.export_tarball.url
