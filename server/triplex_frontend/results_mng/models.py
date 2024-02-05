@@ -121,8 +121,16 @@ class JobData(models.Model):
 
     is_dsDNA_bed = models.BooleanField(default=True)
 
+    export_tarball = models.FileField(default=None, null=True, blank=True)
+    export_hash = models.CharField(max_length=128, null=True, blank=True, default=None)
+
     #Cleaned up keep tracks of the job history, if it was cleaned up after not being accessed for some time
     cleaned_up = models.BooleanField(default=False)
+
+    def set_export_file(self, tarball, hashed):
+        self.export_tarball = tarball
+        self.export_hash = hashed 
+        self.save()
 
     def semantic_equals(self, other_job):
         #Returns true if the 2 jobs are semantically equals   
@@ -157,6 +165,10 @@ class JobData(models.Model):
             t.delete()
             
         dir_ = None
+        if self.export_tarball:
+            if os.path.isfile(self.export_tarball.path):
+                dir_ = self.export_tarball.path
+                os.remove(self.export_tarball.path)
         if self.ssRNA_fasta:
             if os.path.isfile(self.ssRNA_fasta.path):
                 dir_ = self.ssRNA_fasta.path

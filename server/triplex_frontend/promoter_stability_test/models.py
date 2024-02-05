@@ -59,6 +59,14 @@ class StabilityTestJobData(models.Model):
     #Cleaned up keep tracks of the job history, if it was cleaned up after not being accessed for some time
     cleaned_up = models.BooleanField(default=False)
 
+    export_tarball = models.FileField(default=None, null=True, blank=True)
+    export_hash = models.CharField(max_length=128, null=True, blank=True, default=None)
+
+    def set_export_file(self, tarball, hashed):
+        self.export_tarball = tarball
+        self.export_hash = hashed 
+        self.save()
+
     def __str__(self):
         return f"{self.date} - {self.state}"
 
@@ -68,6 +76,10 @@ class StabilityTestJobData(models.Model):
 
     def delete_all_files(self):
         dir_ = None
+        if self.export_tarball:
+            if os.path.isfile(self.export_tarball.path):
+                dir_ = self.export_tarball.path
+                os.remove(self.export_tarball.path)
         if self.ssRNA_fasta:
             if os.path.isfile(self.ssRNA_fasta.path):
                 dir_ = self.ssRNA_fasta.path
