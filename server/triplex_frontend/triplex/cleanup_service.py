@@ -4,12 +4,15 @@ import threading
 import time
 from results_mng.models import JobData
 from results_mng.services import ResultsMngServices
+from promoter_stability_test.services import PromoterStabilityTestServices
 from datetime import datetime, timedelta
 
 def run_cleanup():
     print("Cleaning up...")
     target_date = datetime.now() - timedelta(hours=settings.CLEANUP_AFTER_HOURS)
     ResultsMngServices.cleanup_old_jobs(target_date)
+    PromoterStabilityTestServices.cleanup_old_jobs(target_date)
+
 
 
 def run_continuously(self, interval=60):

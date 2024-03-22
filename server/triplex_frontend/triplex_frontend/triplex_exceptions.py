@@ -137,3 +137,9 @@ class BackgroundGenesNotIncludedInMANE(TriplexException):
         return Responses.personalized_failure(
             {"notIncludedInMANE": self.genes},
             errorCode= status.HTTP_400_BAD_REQUEST)
+
+class JobNotStandardException(TriplexException):
+    def handle(self):
+        return Responses.generic_failure(
+            message="This type of job does not support the requested operation",
+            errorCode= status.HTTP_400_BAD_REQUEST)

@@ -15,6 +15,7 @@ from token_queue_mng.services import TokenQueueService
 from results_mng.services import ResultsMngServices
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication 
 from visualization.visualization_utils import VisualizationUtils
+from promoter_stability_test.services import PromoterStabilityTestServices
 
 class CsrfExemptSessionAuthentication(SessionAuthentication):
 
@@ -61,7 +62,7 @@ class SubmitjobController(APIView):
                 tokenObject.delete()
             if (jobData is not None):
                 try:
-                    ResultsMngServices.delete_data_if_orphan(jobData)
+                    TokenQueueService.delete_data_if_orphan(jobData)
                 except Exception:
                     pass
             return e.handle()
@@ -70,7 +71,7 @@ class SubmitjobController(APIView):
                 tokenObject.delete()
             if (jobData is not None):
                 try:
-                    ResultsMngServices.delete_data_if_orphan(jobData)
+                    TokenQueueService.delete_data_if_orphan(jobData)
                 except Exception:
                     pass
             raise e
@@ -82,54 +83,35 @@ class SubmitjobPromoterStabilityTestController(APIView):
         tokenObject = None; jobData = None;
         try:
             #Parse request parameters
-            ssRNA_fasta, putative_genes, background_genes, species, ssRNA_id, email, jobName = TriplexService.parse_request_params_promoter_stability_test(request)
+            ssRNA_fasta, all_genes, interest_genes, species, ssRNA_id, email, jobName = TriplexService.parse_request_params_promoter_stability_test(request)
             #Validate and rename ssRNA_fasta
             ssRNA_fasta = TriplexService.validate_and_rename_ssRNA_fasta(ssRNA_fasta)
             #Validate genes
-            TriplexService.validate_genes_for_promoter_stability_test(putative_genes, background_genes)
+            TriplexService.validate_genes_for_promoter_stability_test(all_genes, interest_genes)
             #Format triplex_params
             triplex_params = TriplexService.parse_3plex_params(request.data)
             #Validate them 
             TriplexService.validate_triplex_params(triplex_params)
+
+            data_object = PromoterStabilityTestServices.initialize_data_section(ssRNA_fasta, ssRNA_id,  all_genes, interest_genes, species, triplex_params)
             
-            #Initialize data section to receive results
-            #jobData = ResultsMngServices.initialize_or_retrieve_data_section(ssRNA_fasta, dsDNA_file, dsDNA_precomputed, 
-            #    triplex_params, ssRNA_id, species, use_randomization=use_randomization, is_bed = is_bed_dsDNA)
             #If the ssRNA is specified by ID, open the corresponding file
             if (ssRNA_fasta is None):
-                ssRNA_fasta = open(jobData.ssRNA_id.ssRNA_fasta_path, 'rb')
-            
-            #Process:
+                ssRNA_fasta = open(data_object.ssRNA_id.ssRNA_fasta_path, 'rb')
+    
             #1- Generate token and data structure to host data - memorize ssRNA and gene lists
+            token_object = TokenQueueService.get_new_token(name=jobName, email=email, jobData=data_object)
             #  1.1- Add this new class to stuff to be cleaned up by the cleanup service
             #2- Send request to backend server
-            #3-Prepare to receive data
-            """if (tokenObject.state == "Created"):
-                ResultsMngServices.set_job_submitted(jobData)
-                TriplexService.submit_job(ssRNA_fasta, dsDNA_file, dsDNA_precomputed, tokenObject.token, triplex_params, species, use_randomization, is_bed=is_bed_dsDNA)
-            elif (tokenObject.state == "Ready"):
-                TokenQueueService.notify_user_email_job_completed(tokenObject)"""
-            return Responses.success({"token": tokenObject})
+            TriplexService.submit_promoter_stability_test_job(token_object.token, interest_genes, all_genes, ssRNA_fasta, triplex_params, species)
+            PromoterStabilityTestServices.set_job_submitted(data_object)
+            return Responses.success({"token": token_object})
         except TriplexException as e:
-            """if (tokenObject is not None):
-                tokenObject.delete()
-            if (jobData is not None):
-                try:
-                    ResultsMngServices.delete_data_if_orphan(jobData)
-                except Exception:
-                    pass"""
+            if (token_object is not None):
+                token_object.delete()
+            if (data_object is not None):
+                data_object.delete()
             return e.handle()
-        except Exception as e:
-            if (tokenObject is not None):
-                pass
-                #tokenObject.delete()
-            if (jobData is not None):
-                try:
-                    pass
-                    #ResultsMngServices.delete_data_if_orphan(jobData)
-                except Exception:
-                    pass
-            raise e
 
 class JobMailController(APIView):
     authentication_classes = (CsrfExemptSessionAuthentication, BasicAuthentication)
@@ -148,14 +130,18 @@ class CheckjobController(APIView):
             token = kwargs.get("token")
             #Check that token is ready, else raise exception
             token_object = TokenQueueService.find_token(token)
-            if (token_object.check_state_ready() or token_object.check_state_failed()):
-                data = ResultsMngServices.get_data_by_token(token)
-                params = ResultsMngServices.get_triplex_params(token)
-                ResultsMngServices.update_data_last_date(token)
-            else:
-                data = {}
-                params = ResultsMngServices.get_triplex_params(token)
+            data, params = TokenQueueService.getDataFromToken(token_object)
             return Responses.success({"job": token_object, "results": data, "params": params})
+        except TriplexException as e:
+            return e.handle()
+
+class ExportjobController(APIView):
+    def get(self, request, *args, **kwargs):
+        try:
+            token = kwargs.get("token")
+            #Check that token is ready, else raise exception
+            url = TokenQueueService.export_job_data(TokenQueueService.find_token(token))
+            return Responses.success({"url": url})
         except TriplexException as e:
             return e.handle()
 
@@ -163,8 +149,8 @@ class CheckjobsByEmailController(APIView):
     def get(self, request, *args, **kwargs):
         try:
             email = kwargs.get("email")
-            tokens = TokenQueueService.get_tokens_by_email(email)
-            return Responses.success(tokens)
+            TokenQueueService.send_mail_with_all_jobs(email)
+            return Responses.success([])
         except TriplexException as e:
             return e.handle()
 
@@ -197,9 +183,11 @@ class VisualsController(APIView):
             token_object = TokenQueueService.find_token(token)
             #If token not ready return error
             token_object.assert_state_ready()
+            #If not token is standard job, return error
+            token_object.assert_type_standard()
             #Retrieve data for visualizations
             data = VisualizationUtils.get_data_for_visuals(token_object.job, token, dsDNA_id)
-            ResultsMngServices.update_data_last_date(token)
+            ResultsMngServices.update_data_last_date(token_object)
             
             return Responses.success({"job": token_object, "available": data})
         except TriplexException as e:
@@ -214,9 +202,11 @@ class TTS_Sites_Controller(APIView):
             stability = float(kwargs.get("stability"))
             dsDNAID = request.query_params.get('dsdnaid')
             #Retrieve job data
-            data = ResultsMngServices.get_by_token(token)
+            token_object = TokenQueueService.find_token(token)
+            token_object.assert_type_standard()
+            data = token_object.job
             values = VisualizationUtils.find_tpx_in_interval(data, start, end, stability, dsDNAID)
-            ResultsMngServices.update_data_last_date(token)
+            ResultsMngServices.update_data_last_date(token_object)
             return Responses.success({"data": values})
         except TriplexException as e:
             return e.handle()
@@ -252,7 +242,9 @@ class DBD_Controller(APIView):
 class WebSummaryController(APIView):
     def get(self, request, *args, **kwargs):
         try:
-            job = ResultsMngServices.get_by_token(kwargs.get("token"))
+            token_object = TokenQueueService.find_token(kwargs.get("token"))
+            token_object.assert_type_standard()
+            job = token_object.job
             return Responses.success(VisualizationUtils.get_web_summary(job))
         except TriplexException as e:
             return e.handle()
@@ -260,7 +252,9 @@ class WebSummaryController(APIView):
 class ProfileController(APIView):
     def get(self, request, *args, **kwargs):
         try:
-            job = ResultsMngServices.get_by_token(kwargs.get("token"))
+            token_object = TokenQueueService.find_token(kwargs.get("token"))
+            token_object.assert_type_standard()
+            job = token_object.job
             dsDNAID = kwargs.get("dsDNAID")
             result = VisualizationUtils.get_profile_dsDNAID(job, dsDNAID)
             return Responses.binary(result)
@@ -270,7 +264,9 @@ class ProfileController(APIView):
 class ProfileUCSCController(APIView):
     def get(self, request, *args, **kwargs):
         try:
-            job = ResultsMngServices.get_by_token(kwargs.get("token"))
+            token_object = TokenQueueService.find_token(kwargs.get("token"))
+            token_object.assert_type_standard()
+            job = token_object.job
             dsDNAID = kwargs.get("dsDNAID")
             stability = float(kwargs.get("stability"))
             result = VisualizationUtils.get_trace_for_genome_browser(job, dsDNAID, stability)
@@ -281,7 +277,9 @@ class ProfileUCSCController(APIView):
 class TPX_to_excel(APIView):
     def get(self, request, *args, **kwargs):
         try:
-            job = ResultsMngServices.get_by_token(kwargs.get("token"))
+            token_object = TokenQueueService.find_token(kwargs.get("token"))
+            token_object.assert_type_standard()
+            job = token_object.job
             dsDNAID = request.query_params.get("dsDNAID")
             stability = request.query_params.get("stability")
             start = request.query_params.get("start")

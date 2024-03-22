@@ -1,14 +1,24 @@
 from token_queue_mng.models import *
+from promoter_stability_test.models import StabilityTestJobData
 from django.core.exceptions import ObjectDoesNotExist
 from triplex_frontend.triplex_exceptions import TokenDoesNotExistException
+from promoter_stability_test.services import PromoterStabilityTestServices
 from typing import Optional
 from django.core.mail import send_mail
 from django.conf import settings
+from results_mng.services import ResultsMngServices
+import tarfile
+import os.path
+import hashlib
 
 class TokenQueueService:
     
     def get_new_token(name=None, email=None, jobData = None) -> Token:
-        return Token.objects.create(job_name=name, email_address=email, standard_job = jobData) 
+        if (isinstance(jobData, JobData)):
+            return Token.objects.create(job_name=name, email_address=email, standard_job = jobData)
+        elif (isinstance(jobData, StabilityTestJobData)):
+            return Token.objects.create(job_name=name, email_address=email, promoter_stability_test_job = jobData)
+        
 
     def find_token(token: str) -> Token:
         try:
@@ -26,15 +36,22 @@ class TokenQueueService:
     
     def check_token_ready(token: str):
         TokenQueueService.find_token(token).check_state_ready()
-
-    def token_is_state_submitted(token):
-        return token.state == "Submitted"
     
     def remove_token(token: str):
         Token.objects.filter(token=token).delete()
 
     def get_tokens_by_job(job):
-        return Token.objects.filter(standard_job=job)
+        #TODO compatibility with other types of jobs
+        if (isinstance(job, JobData)):
+            return Token.objects.filter(standard_job=job)
+        if (isinstance(job, StabilityTestJobData)):
+            return Token.objects.filter(promoter_stability_test_job=job)
+        return []
+
+    #Delete data object if no token exists associated to it (mostly for exception handling)
+    def delete_data_if_orphan(jobData):
+        if (len(TokenQueueService.get_tokens_by_job(jobData))==0):
+            jobData.delete()
 
     def notify_user_email_job_completed(token: Token):
         if (token.email_address is None):
@@ -87,3 +104,81 @@ class TokenQueueService:
     def get_dbds(token: Token):
         dbds = DBD.objects.filter(token=token).order_by('start')
         return [ [dbd.start, dbd.end] for dbd in dbds ]
+
+    def send_mail_with_all_jobs(email: str):
+        tokens = Token.objects.filter(email_address=email).order_by('-submission_date')
+        if (len(tokens)==0):
+            return 
+        #divide tokens between states
+        divided_tokens = {}
+        for token in tokens:
+            if (not token.state in divided_tokens):
+                divided_tokens[token.state] = []
+            divided_tokens[token.state].append(token)
+        #format each one: name, state, link
+        formatted_tokens = {}
+        for state in divided_tokens.keys():
+            formatted_tokens[state] = []
+            for token in divided_tokens[state]:
+                job_name = token.job_name
+                if (job_name is None):
+                    job_name = "N/A"
+                formatted_tokens[state].append(f"Name: {job_name} - submitted: {token.submission_date} - URL: {settings.CLIENT_URL}checkjob/token/{token.token}")
+        #send email
+        message = "3plex: your jobs list:\n"
+        states = ["Submitted", "Ready", "Expired", "Failed"]
+        for state in states:
+            if (state in formatted_tokens):
+                message += f"\n{state}:\n"
+                for string in formatted_tokens[state]:
+                    message += f"{string}\n"
+        send_mail(
+            "3plex: all your jobs",
+            message,
+            settings.EMAIL_HOST_USER,
+            [email],
+            fail_silently=False,
+        )
+
+    def getDataFromToken(token: Token):
+        #TODO implement for other type of jobs
+        if (token.type_of_job == "standard"):
+            if (token.check_state_ready() or token.check_state_failed()):
+                data = ResultsMngServices.get_data(token.job)
+                params = ResultsMngServices.get_triplex_params(token.job)
+                ResultsMngServices.update_data_last_date(token.job)
+            else:
+                data = {}
+                params = ResultsMngServices.get_triplex_params(token.job)
+        elif (token.type_of_job == "promoter_stability_test"):
+            if (token.check_state_ready() or token.check_state_failed()):
+                data = PromoterStabilityTestServices.get_data(token.job)
+                params = PromoterStabilityTestServices.get_triplex_params(token.job)
+                PromoterStabilityTestServices.update_data_last_date(token.job)
+            else:
+                data = {}
+                params = PromoterStabilityTestServices.get_triplex_params(token.job)
+        else:
+            data = {}
+            params = {}
+        return data, params
+
+    def export_job_data(token):
+        token.assert_state_ready()
+        if (token.job.export_hash is not None and len(token.job.export_hash)>0):
+            return token.job.export_tarball.url
+        source_dir = os.path.join(settings.MEDIA_ROOT, "jobs", token.job.base_path)
+        output_filename = os.path.join(settings.MEDIA_ROOT, "jobs", f"export_{token.token}")
+        with tarfile.open(output_filename, "w:gz") as tar:
+            tar.add(source_dir, arcname=os.path.basename(source_dir))
+        #Generate hash of tarball
+        h = hashlib.sha1() #Doesn't need crittographic hashing function
+        with open(output_filename,'rb') as f: 
+            while chunk := f.read(128*h.block_size): 
+                h.update(chunk)
+        hashed = h.hexdigest()
+        if (len(hashed) > 128):
+            hashed = hashed[:128]
+        #Set file in jobData
+        token.job.set_export_file(f"jobs/export_{token.token}", hashed)
+        return token.job.export_tarball.url

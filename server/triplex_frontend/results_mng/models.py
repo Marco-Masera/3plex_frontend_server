@@ -113,6 +113,7 @@ class JobData(models.Model):
     stability = models.FileField(default=None, null=True,blank=True)
     stability_indexed = models.FileField(default=None, null=True,blank=True)
     summary = models.FileField(default=None, null=True,blank=True)
+    summary_web = models.FileField(default=None, null=True)
     profile = models.FileField(default=None, null=True,blank=True)
     profile_random = models.FileField(default=None, null=True,blank=True)
     secondary_structure = models.FileField(default=None, null=True,blank=True)
@@ -121,8 +122,16 @@ class JobData(models.Model):
 
     is_dsDNA_bed = models.BooleanField(default=True)
 
+    export_tarball = models.FileField(default=None, null=True, blank=True)
+    export_hash = models.CharField(max_length=128, null=True, blank=True, default=None)
+
     #Cleaned up keep tracks of the job history, if it was cleaned up after not being accessed for some time
     cleaned_up = models.BooleanField(default=False)
+
+    def set_export_file(self, tarball, hashed):
+        self.export_tarball = tarball
+        self.export_hash = hashed 
+        self.save()
 
     def semantic_equals(self, other_job):
         #Returns true if the 2 jobs are semantically equals   
@@ -141,6 +150,10 @@ class JobData(models.Model):
             and (str(self.use_random) == str(other_job.use_random))
             )
 
+    @property
+    def have_visualization(self):
+        return True
+
     def __str__(self):
         return f"{self.date} - {self.state} - {self.hash_code}"
 
@@ -148,11 +161,11 @@ class JobData(models.Model):
         temp_files = JobUCSCTrack.objects.filter(job=self)
         for t in temp_files:
             t.delete()
-        summary_web = SummaryWebVersion.objects.filter(job=self)
-        for t in summary_web:
-            t.delete()
-            
         dir_ = None
+        if self.export_tarball:
+            if os.path.isfile(self.export_tarball.path):
+                dir_ = self.export_tarball.path
+                os.remove(self.export_tarball.path)
         if self.ssRNA_fasta:
             if os.path.isfile(self.ssRNA_fasta.path):
                 dir_ = self.ssRNA_fasta.path
@@ -193,6 +206,10 @@ class JobData(models.Model):
             if os.path.isfile(self.stability_indexed.path):
                 dir_ = self.stability_indexed.path
                 os.remove(self.stability_indexed.path)
+        if self.summary_web and self.summary_web.path:
+            if os.path.isfile(self.summary_web.path):
+                dir_ = self.summary_web.path
+                os.remove(self.summary_web.path)
 
         if (dir_ is not None and len(dir_)>0):
             dir_ = os.path.dirname(os.path.join(settings.MEDIA_ROOT, str(dir_)))
@@ -208,7 +225,7 @@ class JobData(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.base_path:
-            self.base_path = generate_random_alphanumeric(32)
+            self.base_path = "standard" + generate_random_alphanumeric(32)
             # using your function as above or anything else
             failures = 0
             while True:
@@ -236,24 +253,6 @@ class JobUCSCTrack(models.Model):
             if os.path.isfile(self.file.path):
                 os.remove(self.file.path)
 
-class SummaryWebVersion(models.Model):
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=['job', 'dsDNA_id'], name='unique_row_summary_web'
-            )
-        ]
-        indexes = [
-           models.Index(fields=['job']),]
-    job = models.ForeignKey(JobData, on_delete=models.CASCADE)
-    ssRNA_id = models.CharField(max_length=128)
-    dsDNA_id = models.CharField(max_length=256)
-    dsDNA_chr = models.CharField(max_length=32)
-    dsDNA_b = models.IntegerField()
-    dsDNA_e = models.IntegerField()
-    stability_best = models.FloatField()
-    stability_norm = models.FloatField()
-    score_best = models.IntegerField()
 
 @receiver(models.signals.post_delete, sender=JobData)
 def auto_delete_file_on_delete(sender, instance, **kwargs):
