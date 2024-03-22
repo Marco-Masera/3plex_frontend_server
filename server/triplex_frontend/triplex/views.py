@@ -92,12 +92,13 @@ class SubmitjobPromoterStabilityTestController(APIView):
             triplex_params = TriplexService.parse_3plex_params(request.data)
             #Validate them 
             TriplexService.validate_triplex_params(triplex_params)
+
+            data_object = PromoterStabilityTestServices.initialize_data_section(ssRNA_fasta, ssRNA_id,  all_genes, interest_genes, species, triplex_params)
             
             #If the ssRNA is specified by ID, open the corresponding file
             if (ssRNA_fasta is None):
-                ssRNA_fasta = open(jobData.ssRNA_id.ssRNA_fasta_path, 'rb')
-            
-            data_object = PromoterStabilityTestServices.initialize_data_section(ssRNA_fasta, ssRNA_id,  all_genes, interest_genes, species, triplex_params)
+                ssRNA_fasta = open(data_object.ssRNA_id.ssRNA_fasta_path, 'rb')
+    
             #1- Generate token and data structure to host data - memorize ssRNA and gene lists
             token_object = TokenQueueService.get_new_token(name=jobName, email=email, jobData=data_object)
             #  1.1- Add this new class to stuff to be cleaned up by the cleanup service
