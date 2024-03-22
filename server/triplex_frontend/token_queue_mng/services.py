@@ -1,7 +1,7 @@
 from token_queue_mng.models import *
 from promoter_stability_test.models import StabilityTestJobData
 from django.core.exceptions import ObjectDoesNotExist
-from triplex_frontend.triplex_exceptions import TokenDoesNotExistException
+from triplex_frontend.triplex_exceptions import TokenDoesNotExistException,JobFailedException,HashDoesNotBatchException
 from promoter_stability_test.services import PromoterStabilityTestServices
 from typing import Optional
 from django.core.mail import send_mail
@@ -168,7 +168,7 @@ class TokenQueueService:
         if (token.job.export_hash is not None and len(token.job.export_hash)>0):
             return token.job.export_tarball.url
         source_dir = os.path.join(settings.MEDIA_ROOT, "jobs", token.job.base_path)
-        output_filename = os.path.join(settings.MEDIA_ROOT, "jobs", f"export_{token.token}")
+        output_filename = os.path.join(settings.MEDIA_ROOT, "jobs", f"export_{token.job.base_path}")
         with tarfile.open(output_filename, "w:gz") as tar:
             tar.add(source_dir, arcname=os.path.basename(source_dir))
         #Generate hash of tarball
@@ -180,5 +180,28 @@ class TokenQueueService:
         if (len(hashed) > 128):
             hashed = hashed[:128]
         #Set file in jobData
-        token.job.set_export_file(f"jobs/export_{token.token}", hashed)
+        token.job.set_export_file(f"jobs/export_{token.job.base_path}", hashed)
         return token.job.export_tarball.url
+
+    def import_job_data(token, file):
+        token.assert_state_expired()
+        if (token.job.export_hash is None or len(token.job.export_hash)==0 or token.job.cleaned_up==False):
+            raise JobFailedException()
+        #Generate hash of file
+        h = hashlib.sha1() #Doesn't need crittographic hashing function
+        with open(file,'rb') as f: 
+            while chunk := f.read(128*h.block_size): 
+                h.update(chunk)
+        hashed = h.hexdigest()
+        if (len(hashed) > 128):
+            hashed = hashed[:128]
+        if not (hashed == token.job.export_hash):
+            raise HashDoesNotBatchException()
+        #Extract the tarball into the directory
+        with tarfile.open(file, "r:gz") as tar:
+            tar.extractall(path=os.path.join(settings.MEDIA_ROOT_ABS_PATH,"jobs"))
+        #Remove "file"
+        #Set job back to ready
+        token.job.cleaned_up = False
+        token.job.state = "Ready"
+        token.job.save()
