@@ -1,6 +1,5 @@
 from .models import *
 from triplex_frontend.triplex_exceptions import DataDoesNotExistException, TokenIsNotStateSubmittedException, SsRnaIdNotValidException
-from token_queue_mng.services import TokenQueueService
 from datetime import datetime
 from django.conf import settings
 from django.db.models import Q
@@ -14,18 +13,6 @@ from results_mng.hash_lib import get_hash
 import sqlite3
 
 class ResultsMngServices:
-    #Retrieve data from token (string)
-    def get_by_token(token: str):
-        job = TokenQueueService.find_token(token).job
-        if (job is None):
-            raise DataDoesNotExistException()
-        return job
-
-    #Delete data object if no token exists associated to it (mostly for exception handling)
-    def delete_data_if_orphan(jobData: JobData):
-        if (len(TokenQueueService.get_tokens_by_job(jobData))==0):
-            jobData.delete()
-
 
     def find_job_with_equal_input(hash_string, other_job):
         jobs = JobData.objects.filter(hash_code=hash_string).filter(Q(state="Submitted") | Q(state="Ready")).filter(triplex_params=other_job.triplex_params)
@@ -84,13 +71,7 @@ class ResultsMngServices:
             return existingJob
         return job
     
-    def receive_data(token: str, stability, summary, profile, secondary_struct, profile_random) -> JobData:
-        #Note: data must be initialized or this will return DataDoesNotExistException
-        tokenObject = TokenQueueService.find_token(token)
-        data = tokenObject.job
-
-        if (not TokenQueueService.token_is_state_submitted(tokenObject)):
-            raise TokenIsNotStateSubmittedException()
+    def receive_data(data: JobData, stability, summary, profile, secondary_struct, profile_random) -> JobData:
         #Set file fields        
         data.stability = stability
         data.summary = summary
@@ -113,18 +94,18 @@ class ResultsMngServices:
         #If input was .bed index tpx.summary too
         build_summary_web = data.is_dsDNA_bed
         if (build_summary_web):
-            ResultsMngServices.build_summary_web(data)
+            path = ResultsMngServices.build_summary_web(data)
+            data.summary_web.name = path
+            data.save()
 
-        TokenQueueService.notify_all_users_email_job_completed(data)
         return data
 
-    def update_data_last_date(token: str):
-        jobData = ResultsMngServices.get_by_token(token)
+    def update_data_last_date(jobData: JobData):
         jobData.date = datetime.now()
         jobData.save()
 
-    def get_data_by_token(token:str):
-        data = ResultsMngServices.get_by_token(token)
+
+    def get_data(data: JobData):
         #Returns urls of available data
         def clean_name(name):
             return name.split("/")[-1]
@@ -147,12 +128,10 @@ class ResultsMngServices:
             available["Logs_STDOUT"] = data.rawLogsSTDOUT.url
         return available
 
-    def get_triplex_params(token:str):
-        data = ResultsMngServices.get_by_token(token)
-        return data.triplex_params
+    def get_triplex_params(job: JobData):
+        return job.triplex_params
     
-    def set_job_failed(token: str, STDOUT = None, STDERR = None):
-        jobObject = ResultsMngServices.get_by_token(token)
+    def set_job_failed(jobObject: JobData, STDOUT = None, STDERR = None):
         jobObject.state = "Failed"
 
         if (STDOUT is not None):
@@ -163,7 +142,6 @@ class ResultsMngServices:
             jobObject.rawLogsSTDERR.name = f"jobs/{jobObject.base_path}/Logs_STDERR"
 
         jobObject.save()
-        TokenQueueService.notify_all_users_email_job_failed(jobObject)
     
     def cleanup_old_jobs(cleanup_older_than):
         old_jobs = JobData.objects.filter(date__lte=cleanup_older_than, cleaned_up = False)
@@ -248,18 +226,36 @@ class ResultsMngServices:
     @transaction.atomic
     def build_summary_web(jobData: JobData):
         with gzip.open(jobData.summary.path, mode='rt') as summary_file:
+            path = f"jobs/{jobData.base_path}/summary_web.db"
+            full_path = os.path.join(settings.MEDIA_ROOT, path)
+            conn = sqlite3.connect(full_path)
+            cursor = conn.cursor()
+            # Create the table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS Summary_Web (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ssRNA_id TEXT, dsDNA_id TEXT, dsDNA_chr TEXT,
+                    dsDNA_b INTEGER, dsDNA_e INTEGER, stability_best REAL,
+                    stability_norm REAL, score_best REAL)''')
+
             for line in summary_file.readlines()[1:]:
                 line = line.split("\t")
-                summary = SummaryWebVersion()
-                summary.job = jobData
-                summary.ssRNA_id = line[1]
-                summary.dsDNA_id = line[0]
-                seqId = line[0].split(":")
-                summary.dsDNA_chr = seqId[2]
-                coords = seqId[3].split("-")
-                summary.dsDNA_b = coords[0]
-                summary.dsDNA_e = coords[1]
-                summary.stability_best = float(line[11])
-                summary.stability_norm = float(line[14])
-                summary.score_best = float(line[13])
-                summary.save()
+                seqId = line[0].split(":")#not in db
+                coords = seqId[3].split("-")#not in db
+
+                ssRNA_id = line[1]
+                dsDNA_id = line[0]
+                dsDNA_chr = seqId[2]
+                dsDNA_b = coords[0]
+                dsDNA_e = coords[1]
+                stability_best = float(line[11])
+                stability_norm = float(line[14])
+                score_best = float(line[13])
+                cursor.execute('''
+                    INSERT INTO Summary_Web
+                    (ssRNA_id, dsDNA_id, dsDNA_chr,dsDNA_b, dsDNA_e, stability_best,stability_norm, score_best)
+                    VALUES (?,?,?,?,?,?,?,?)
+                ''', (ssRNA_id, dsDNA_id, dsDNA_chr,dsDNA_b, dsDNA_e, stability_best,stability_norm, score_best))
+
+            conn.commit()
+            conn.close()
+            return path

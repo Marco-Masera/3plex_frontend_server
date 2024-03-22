@@ -153,9 +153,28 @@ class VisualizationUtils:
         return available
 
     def get_web_summary(jobData: JobData):
+        def dict_factory(cursor, row):
+            d = {}
+            for idx, col in enumerate(cursor.description):
+                d[col[0]] = row[idx]
+            return d
         if (jobData.is_dsDNA_bed == False):
             return None
-        return SummaryWebVersion.objects.filter(job=jobData)
+        to_return = []
+        #Open sqlite file 
+        #Check if there is a temp file already set
+        if jobData.summary_web is None or not os.path.isfile(jobData.summary_web.path):
+            return []
+        conn = sqlite3.connect(jobData.summary_web.path)
+        conn.row_factory = dict_factory
+        cursor = conn.cursor()
+        query = """
+            SELECT ssRNA_id, dsDNA_id, dsDNA_chr,dsDNA_b, dsDNA_e, stability_best,stability_norm, score_best FROM Summary_Web;
+        """
+        cursor.execute(query)
+        summary = cursor.fetchall()
+        conn.close()
+        return summary
 
     def get_trace_for_genome_browser(job, dsDNA_id, min_stability):
         def build_url(obj):

@@ -78,6 +78,28 @@ class TriplexService:
             if (bounds[1] is not None and bounds[1] < value):
                 raise TriplexParamOutOfBound(f"3plex param {param} is set to {params[param]} but its upper limit is {bounds[1]}")
 
+    def submit_promoter_stability_test_job(token: str, genes_interest, genes_all, ssRNA_fasta, triplex_params, species):
+        ssRNA_fasta.seek(0)
+        url = settings.BACKEND_URL+f"/submit_promoter_test/{token}"
+        query_params = []
+        query_params.append(f"hmac={get_time_based_otp(token)}")
+        if (species is not None):
+            query_params.append(f"species={species}")
+        query_params.append(f"debug={settings.DEBUG}")
+        if (len(query_params)>0):
+            url = f"{url}?{ '&'.join(query_params) }"
+        files = {'ssRNA_fasta': ssRNA_fasta}
+        triplex_tuples = [(key, triplex_params[key]) for key in triplex_params.keys()]
+        triplex_tuples += [("genes_interest", ",".join(genes_interest)), ("genes_all", ",".join(genes_all))]
+        try:
+            r = requests.post(url, files=files, data=triplex_tuples)
+            if (r.status_code != 200):
+                print(f"Bad response: {r.content}")
+                raise CannotSubmitToBackendException()
+        except Exception as e:
+            print(e)
+            raise CannotSubmitToBackendException()
+
     def submit_job(ssRNA_fasta, dsDNA_fasta, dsDNA_precomputed, token: str, triplex_params, species, use_randomization=0, is_bed=False):
         ssRNA_fasta.seek(0)
         if (dsDNA_fasta):
@@ -214,12 +236,12 @@ class TriplexService:
             ssRNA_id = request.data["SSRNA_ID"]
         else:
             raise SsRnaNotProvidedException()
-        if ("putative_genes" in request.data):
-            putative_genes = request.data["putative_genes"].split(",")
+        if ("all_genes" in request.data):
+            all_genes = request.data["all_genes"].split(",")
         else:
             raise DsDnaNotProvidedException()
-        if ("background_genes" in request.data):
-            background_genes = request.data["background_genes"].split(",")
+        if ("interest_genes" in request.data):
+            interest_genes = request.data["interest_genes"].split(",")
         else:
             raise DsDnaNotProvidedException()
         #Check extra field
@@ -236,17 +258,15 @@ class TriplexService:
             if (not (species,species) in  settings.ALLOWED_SPECIES):
                 raise SpeciesNotSupportedException()
         
-        return ssRNA_fasta, putative_genes, background_genes, species, ssRNA_id, email, jobName
+        return ssRNA_fasta, all_genes, interest_genes, species, ssRNA_id, email, jobName
 
 
-    def validate_genes_for_promoter_stability_test(putative_genes, background_genes):
-        pass 
-        #Check that background genes are included in putative
-        if not (set(background_genes).issubset(set(putative_genes))):
+    def validate_genes_for_promoter_stability_test(all_genes, interest_genes):
+        if not (set(all_genes).issubset(set(all_genes))):
             raise BackgroundGenesNotIncludedInPutative()
         #Check that all genes are included in MANE
         not_included = []
-        for elem in putative_genes:
+        for elem in all_genes:
             if (GeneInDnaTargetSite.objects.filter(name=elem).count()==0):
                 not_included.append(elem)
         if (len(not_included)>0):

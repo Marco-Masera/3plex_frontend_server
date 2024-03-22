@@ -94,7 +94,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'triplex',
     'token_queue_mng',
-    'results_mng'
+    'results_mng',
+    'promoter_stability_test'
 ]
 
 MIDDLEWARE = [
@@ -142,7 +143,10 @@ DATABASES = {
          'USER': getenv('DATABASE_USERNAME', ''),
          'PASSWORD': getenv('DATABASE_PASSWORD', 'triplex'),
          'HOST': getenv('DATABASE_HOST', ''), 
-         'PORT': getenv('DATABASE_PORT', 0)
+         'PORT': getenv('DATABASE_PORT', 0),
+         'OPTIONS': {
+            "init_command": "SET foreign_key_checks = 0;",
+         },
     }
 }
 

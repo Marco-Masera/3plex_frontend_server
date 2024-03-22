@@ -28,6 +28,7 @@ class SubmitResult(APIView):
     def post(self, request, *args, **kwargs):
         token = kwargs.get("token")
         try:
+            job = None
             #Check authentication using hmac
             if (not HASHED_TOKEN in request.data):
                 raise Unauthorized()
@@ -35,6 +36,11 @@ class SubmitResult(APIView):
                 hashed_token = request.data[HASHED_TOKEN]
             if (not ResultsMngServices.check_token_hmac(token, hashed_token)):
                 raise Unauthorized()
+
+            token_object = TokenQueueService.find_token(kwargs.get("token"))
+            token_object.assert_type_standard()
+            token_object.assert_state_submitted()
+            job = token_object.job
 
             stability = request.data[STABILITY]
             summary = request.data[SUMMARY]
@@ -51,14 +57,19 @@ class SubmitResult(APIView):
             if (profile is None or profile.size == 0):
                 raise DidNotReceiveInputFilesException()
 
-            ResultsMngServices.receive_data(token, stability, summary, profile, secondary_struct, profile_random)
-            ResultsMngServices.update_data_last_date(token)
+            ResultsMngServices.receive_data(job, stability, summary, profile, secondary_struct, profile_random)
+            TokenQueueService.notify_all_users_email_job_completed(job)
+            ResultsMngServices.update_data_last_date(job)
             
         except TriplexException as e:
-            ResultsMngServices.set_job_failed(token)  
+            if (job is not None):
+                ResultsMngServices.set_job_failed(job)  
+                TokenQueueService.notify_all_users_email_job_failed(job)
             return e.handle()
         except Exception as e:
-            ResultsMngServices.set_job_failed(token)  
+            if (job is not None):
+                ResultsMngServices.set_job_failed(job)  
+                TokenQueueService.notify_all_users_email_job_failed(job)
             raise e
         return Responses.success({"ok": "ok"})
     
@@ -79,8 +90,11 @@ class SubmitError(APIView):
                 stdout = request.data[STDOUT]
             if (STDERR in request.data and request.data[STDERR].size > 0):
                 stderr = request.data[STDERR]
-            
-            ResultsMngServices.set_job_failed(token, stdout, stderr)  
+            token_object = TokenQueueService.find_token(token)
+            token_object.assert_type_standard()
+            job = token_object.job
+            ResultsMngServices.set_job_failed(job, stdout, stderr)
+            TokenQueueService.notify_all_users_email_job_failed(job)  
             return Responses.success({"ok": "ok"})
         except TriplexException as e:
             return e.handle()
