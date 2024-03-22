@@ -63,7 +63,7 @@ class StabilityTestJobData(models.Model):
     export_hash = models.CharField(max_length=128, null=True, blank=True, default=None)
 
     def set_export_file(self, tarball, hashed):
-        self.export_tarball = tarball
+        self.export_tarball.name = tarball
         self.export_hash = hashed 
         self.save()
 
@@ -116,10 +116,7 @@ class StabilityTestJobData(models.Model):
             dir_ = os.path.dirname(os.path.join(settings.MEDIA_ROOT, str(dir_)))
             if (os.path.isdir(dir_)):
                 os.rmdir(os.path.join(dir_))
-        self.ssRNA_id = None
-        self.ssRNA_fasta = None
-        self.rawLogsSTDERR = None 
-        self.rawLogsSTDOUT = None
+        self.export_tarball = None
 
     def save(self, *args, **kwargs):
         if not self.base_path:
