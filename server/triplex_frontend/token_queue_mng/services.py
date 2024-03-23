@@ -165,7 +165,7 @@ class TokenQueueService:
 
     def export_job_data(token):
         token.assert_state_ready()
-        if (token.job.export_hash is not None and len(token.job.export_hash)>0):
+        if (token.job.export_hash is not None and len(token.job.export_hash)>0 and bool(token.job.export_tarball)):
             return token.job.export_tarball.url
         source_dir = os.path.join(settings.MEDIA_ROOT, "jobs", token.job.base_path)
         output_filename = os.path.join(settings.MEDIA_ROOT, "jobs", f"export_{token.job.base_path}")
