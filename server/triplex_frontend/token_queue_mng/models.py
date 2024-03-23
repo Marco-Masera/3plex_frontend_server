@@ -64,6 +64,10 @@ class Token(models.Model):
         dict_["have_visualization"] = self.job.have_visualization
         return dict_
 
+    def assert_state_expired(self):
+        if not (self.state == "Expired"):
+            raise JobFailedException()
+
     def assert_state_ready(self):
         if (self.state == "Ready"):
             return

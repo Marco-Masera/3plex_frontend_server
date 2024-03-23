@@ -143,3 +143,8 @@ class JobNotStandardException(TriplexException):
         return Responses.generic_failure(
             message="This type of job does not support the requested operation",
             errorCode= status.HTTP_400_BAD_REQUEST)
+class HashDoesNotBatchException(TriplexException):
+    def handle(self):
+        return Responses.generic_failure(
+            message="The tarball uploaded is not the one generated during export",
+            errorCode= status.HTTP_401_UNAUTHORIZED)

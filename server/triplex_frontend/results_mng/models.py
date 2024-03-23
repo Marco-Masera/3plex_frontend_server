@@ -129,7 +129,7 @@ class JobData(models.Model):
     cleaned_up = models.BooleanField(default=False)
 
     def set_export_file(self, tarball, hashed):
-        self.export_tarball = tarball
+        self.export_tarball.name = tarball
         self.export_hash = hashed 
         self.save()
 
@@ -215,13 +215,7 @@ class JobData(models.Model):
             dir_ = os.path.dirname(os.path.join(settings.MEDIA_ROOT, str(dir_)))
             if (os.path.isdir(dir_)):
                 os.rmdir(os.path.join(dir_))
-        self.ssRNA_id = None
-        self.ssRNA_fasta = None
-        self.dsDNA_fasta = None
-        self.stability = None
-        self.summary = None
-        self.rawLogsSTDERR = None 
-        self.rawLogsSTDOUT = None
+        self.export_tarball = None
 
     def save(self, *args, **kwargs):
         if not self.base_path:
