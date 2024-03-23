@@ -16,6 +16,7 @@ from results_mng.services import ResultsMngServices
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication 
 from visualization.visualization_utils import VisualizationUtils
 from promoter_stability_test.services import PromoterStabilityTestServices
+from django.core.files.storage import FileSystemStorage
 
 class CsrfExemptSessionAuthentication(SessionAuthentication):
 
@@ -136,12 +137,24 @@ class CheckjobController(APIView):
             return e.handle()
 
 class ExportjobController(APIView):
+    parser_classes = [parsers.MultiPartParser] 
+    authentication_classes = (CsrfExemptSessionAuthentication, BasicAuthentication)
     def get(self, request, *args, **kwargs):
         try:
             token = kwargs.get("token")
             #Check that token is ready, else raise exception
             url = TokenQueueService.export_job_data(TokenQueueService.find_token(token))
             return Responses.success({"url": url})
+        except TriplexException as e:
+            return e.handle()
+    def post(self, request, *args, **kwargs):
+        try:
+            token = kwargs.get("token")
+            in_memory_file_obj = request.data["TARBALL"]
+            file = "/tmp/" + FileSystemStorage(location="/tmp").save(in_memory_file_obj.name, in_memory_file_obj)
+            print(file)
+            TokenQueueService.import_job_data(TokenQueueService.find_token(token), file)
+            return Responses.success({})
         except TriplexException as e:
             return e.handle()
 
