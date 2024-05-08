@@ -54,6 +54,11 @@ def get_conservation_by_transcript_id(transcript):
 
     if(strand=="-"):
         signal.reverse()
+    if (np.isnan(signal).any()):
+        signal = np.array(signal)
+        signal[np.isnan(signal)] = 0
+        signal = list(signal)
+    
     return signal
 
 def get_repeats_by_transcript_id(transcript):
