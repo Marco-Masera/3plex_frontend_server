@@ -5,6 +5,7 @@ import secrets
 import os
 import filecmp
 from django.db import IntegrityError
+import shutil
 
 ALLOWED_SPECIES = settings.ALLOWED_SPECIES
 
@@ -211,10 +212,11 @@ class JobData(models.Model):
                 dir_ = self.summary_web.path
                 os.remove(self.summary_web.path)
 
+
         if (dir_ is not None and len(dir_)>0):
             dir_ = os.path.dirname(os.path.join(settings.MEDIA_ROOT, str(dir_)))
             if (os.path.isdir(dir_)):
-                os.rmdir(os.path.join(dir_))
+                shutil.rmtree(dir_)
         self.export_tarball = None
 
     def save(self, *args, **kwargs):
