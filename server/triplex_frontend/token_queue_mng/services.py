@@ -168,7 +168,7 @@ class TokenQueueService:
         if (token.job.export_hash is not None and len(token.job.export_hash)>0 and bool(token.job.export_tarball)):
             return token.job.export_tarball.url
         source_dir = os.path.join(settings.MEDIA_ROOT, "jobs", token.job.base_path)
-        output_filename = os.path.join(settings.MEDIA_ROOT, "jobs", f"export_{token.job.base_path}")
+        output_filename = os.path.join(settings.MEDIA_ROOT, "jobs", f"export_{token.job.base_path}.tar.gz")
         with tarfile.open(output_filename, "w:gz") as tar:
             tar.add(source_dir, arcname=os.path.basename(source_dir))
         #Generate hash of tarball
@@ -180,7 +180,7 @@ class TokenQueueService:
         if (len(hashed) > 128):
             hashed = hashed[:128]
         #Set file in jobData
-        token.job.set_export_file(f"jobs/export_{token.job.base_path}", hashed)
+        token.job.set_export_file(f"jobs/export_{token.job.base_path}.tar.gz", hashed)
         return token.job.export_tarball.url
 
     def import_job_data(token, file):
