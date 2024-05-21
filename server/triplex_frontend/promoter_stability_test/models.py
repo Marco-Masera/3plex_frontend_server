@@ -6,6 +6,7 @@ import os
 import filecmp
 from django.db import IntegrityError
 from results_mng.models import LongestTranscript
+import shutil
 
 ALLOWED_SPECIES = settings.ALLOWED_SPECIES
 # Create your models here.
@@ -115,7 +116,7 @@ class StabilityTestJobData(models.Model):
         if (dir_ is not None and len(dir_)>0):
             dir_ = os.path.dirname(os.path.join(settings.MEDIA_ROOT, str(dir_)))
             if (os.path.isdir(dir_)):
-                os.rmdir(os.path.join(dir_))
+                shutil.rmtree(dir_)
         self.export_tarball = None
 
     def save(self, *args, **kwargs):
