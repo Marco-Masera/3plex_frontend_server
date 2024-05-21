@@ -159,6 +159,8 @@ class JobData(models.Model):
         return f"{self.date} - {self.state} - {self.hash_code}"
 
     def delete_all_files(self):
+        print("DEL")
+        print(self.ssRNA_fasta, os.path.isfile(self.dsDNA_fasta.path), self.dsDNA_fasta, os.path.isfile(self.dsDNA_fasta.path))
         temp_files = JobUCSCTrack.objects.filter(job=self)
         for t in temp_files:
             t.delete()
@@ -215,7 +217,9 @@ class JobData(models.Model):
 
         if (dir_ is not None and len(dir_)>0):
             dir_ = os.path.dirname(os.path.join(settings.MEDIA_ROOT, str(dir_)))
+            print(dir_)
             if (os.path.isdir(dir_)):
+                print("Deleting dir")
                 shutil.rmtree(dir_)
         self.export_tarball = None
 
