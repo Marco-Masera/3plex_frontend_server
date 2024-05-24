@@ -76,30 +76,23 @@ class StabilityTestJobData(models.Model):
         return False
 
     def delete_all_files(self):
-        dir_ = None
         if self.export_tarball:
             if os.path.isfile(self.export_tarball.path):
-                dir_ = self.export_tarball.path
                 os.remove(self.export_tarball.path)
         if self.ssRNA_fasta:
             if os.path.isfile(self.ssRNA_fasta.path):
-                dir_ = self.ssRNA_fasta.path
                 os.remove(self.ssRNA_fasta.path)
         if self.rawLogsSTDOUT:
             if os.path.isfile(self.rawLogsSTDOUT.path):
-                dir_ = self.rawLogsSTDOUT.path
                 os.remove(self.rawLogsSTDOUT.path)
         if self.rawLogsSTDERR:
             if os.path.isfile(self.rawLogsSTDERR.path):
-                dir_ = self.rawLogsSTDERR.path
                 os.remove(self.rawLogsSTDERR.path)
         if self.genes_all:
             if os.path.isfile(self.genes_all.path):
-                dir_ = self.genes_all.path
                 os.remove(self.genes_all.path)
         if self.genes_of_interest:
             if os.path.isfile(self.genes_of_interest.path):
-                dir_ = self.genes_of_interest.path
                 os.remove(self.genes_of_interest.path)
         others = [
             'STABILITY_BEST', 'STABILITY_NORM', 'STABILITY_BEST_FGSEA_RES', 'STABILITY_BEST_LEADING_EDGE',
@@ -113,10 +106,9 @@ class StabilityTestJobData(models.Model):
                 if os.path.isfile(file_field.path):
                     os.remove(file_field.path)
 
-        if (dir_ is not None and len(dir_)>0):
-            dir_ = os.path.dirname(os.path.join(settings.MEDIA_ROOT, str(dir_)))
-            if (os.path.isdir(dir_)):
-                shutil.rmtree(dir_)
+        dir_ = os.path.join(settings.MEDIA_ROOT, "jobs", self.base_path)
+        if (os.path.isdir(dir_)):
+            shutil.rmtree(dir_)
         self.export_tarball = None
 
     def save(self, *args, **kwargs):
