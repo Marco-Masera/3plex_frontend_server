@@ -160,67 +160,49 @@ class JobData(models.Model):
 
     def delete_all_files(self):
         print("DEL")
-        print(self.ssRNA_fasta, os.path.isfile(self.dsDNA_fasta.path), self.dsDNA_fasta, os.path.isfile(self.dsDNA_fasta.path))
         temp_files = JobUCSCTrack.objects.filter(job=self)
         for t in temp_files:
             t.delete()
-        dir_ = None
         if self.export_tarball:
             if os.path.isfile(self.export_tarball.path):
-                dir_ = self.export_tarball.path
                 os.remove(self.export_tarball.path)
         if self.ssRNA_fasta:
             if os.path.isfile(self.ssRNA_fasta.path):
-                dir_ = self.ssRNA_fasta.path
                 os.remove(self.ssRNA_fasta.path)
         if self.dsDNA_fasta:
             if os.path.isfile(self.dsDNA_fasta.path):
-                dir_ = self.dsDNA_fasta.path
                 os.remove(self.dsDNA_fasta.path)
         if self.stability:
             if os.path.isfile(self.stability.path):
-                dir_ = self.stability.path
                 os.remove(self.stability.path)
         if self.summary:
             if os.path.isfile(self.summary.path):
-                dir_ = self.summary.path
                 os.remove(self.summary.path)
         if self.rawLogsSTDOUT:
             if os.path.isfile(self.rawLogsSTDOUT.path):
-                dir_ = self.rawLogsSTDOUT.path
                 os.remove(self.rawLogsSTDOUT.path)
         if self.rawLogsSTDERR:
             if os.path.isfile(self.rawLogsSTDERR.path):
-                dir_ = self.rawLogsSTDERR.path
                 os.remove(self.rawLogsSTDERR.path)
         if self.profile and self.profile.path:
             if os.path.isfile(self.profile.path):
-                dir_ = self.profile.path
                 os.remove(self.profile.path)
         if self.profile_random and self.profile_random.path:
             if os.path.isfile(self.profile_random.path):
-                dir_ = self.profile_random.path
                 os.remove(self.profile_random.path)
         if self.secondary_structure and self.secondary_structure.path:
             if os.path.isfile(self.secondary_structure.path):
-                dir_ = self.secondary_structure.path
                 os.remove(self.secondary_structure.path)
         if self.stability_indexed and self.stability_indexed.path:
             if os.path.isfile(self.stability_indexed.path):
-                dir_ = self.stability_indexed.path
                 os.remove(self.stability_indexed.path)
         if self.summary_web and self.summary_web.path:
             if os.path.isfile(self.summary_web.path):
-                dir_ = self.summary_web.path
                 os.remove(self.summary_web.path)
 
-
-        if (dir_ is not None and len(dir_)>0):
-            dir_ = os.path.dirname(os.path.join(settings.MEDIA_ROOT, str(dir_)))
-            print(dir_)
-            if (os.path.isdir(dir_)):
-                print("Deleting dir")
-                shutil.rmtree(dir_)
+        dir_ = os.path.join(settings.MEDIA_ROOT, "jobs", self.base_path)
+        if (os.path.isdir(dir_)):
+            shutil.rmtree(dir_)
         self.export_tarball = None
 
     def save(self, *args, **kwargs):
@@ -254,10 +236,10 @@ class JobUCSCTrack(models.Model):
                 os.remove(self.file.path)
 
 
-@receiver(models.signals.post_delete, sender=JobData)
+@receiver(models.signals.post_delete, sender=JobData, weak=False)
 def auto_delete_file_on_delete(sender, instance, **kwargs):
     instance.delete_all_files()
-@receiver(models.signals.post_delete, sender=JobUCSCTrack)
+@receiver(models.signals.post_delete, sender=JobUCSCTrack, weak=False)
 def auto_delete_file_on_delete(sender, instance, **kwargs):
     instance.delete_all_files()
 
