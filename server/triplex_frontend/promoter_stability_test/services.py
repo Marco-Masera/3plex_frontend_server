@@ -60,7 +60,7 @@ class PromoterStabilityTestServices:
             old_job.cleaned_up = True
             old_job.save()
 
-    def set_job_failed(job, stdout, stderr):
+    def set_job_failed(jobObject, STDOUT, STDERR):
         jobObject.state = "Failed"
         if (STDOUT is not None):
             jobObject.rawLogsSTDOUT = STDOUT
