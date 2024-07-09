@@ -14,8 +14,19 @@ from results_mng.services import ResultsMngServices
 from token_queue_mng.services import TokenQueueService
 from triplex_frontend.triplex_exceptions import DidNotReceiveInputFilesException, TriplexException, Unauthorized
 from .services import PromoterStabilityTestServices
-
 HASHED_TOKEN = "HTOKEN"
+
+
+#Input body as key-value form-data with keys:
+STABILITY = "STABILITY"
+SUMMARY = "SUMMARY"
+PROFILE = "PROFILE"
+SECONDARY_STRUCTURE = "SECONDARY_STRUCTURE"
+PROFILE_RANDOM = "PROFILE_RANDOM"
+STDOUT= "STDOUT"
+STDERR = "STDERR"
+HASHED_TOKEN = "HTOKEN"
+
 class SubmitResult(APIView):
     parser_classes = [parsers.MultiPartParser] 
     def post(self, request, *args, **kwargs):
