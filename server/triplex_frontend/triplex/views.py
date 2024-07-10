@@ -83,6 +83,7 @@ class SubmitjobPromoterStabilityTestController(APIView):
     def post(self, request, *args, **kwargs):
         tokenObject = None; jobData = None;
         try:
+            token_object = None; data_object = None
             #Parse request parameters
             ssRNA_fasta, all_genes, interest_genes, species, ssRNA_id, email, jobName = TriplexService.parse_request_params_promoter_stability_test(request)
             #Validate and rename ssRNA_fasta
