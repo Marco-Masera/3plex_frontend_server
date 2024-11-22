@@ -7,6 +7,7 @@ import datetime
 import hmac
 from triplex_frontend.triplex_exceptions import *
 from results_mng.models import GeneInDnaTargetSite
+import re
 
 #Input body as key-value form-data with keys:
 SSRNA_FASTA = "SSRNA_FASTA" #Fasta file as ssRNA input
@@ -273,6 +274,7 @@ class TriplexService:
             raise BackgroundGenesNotIncludedInMANE(not_included) 
 
     def validate_and_rename_ssRNA_fasta(ssRNA_fasta):
+        print("Validating")
         if (ssRNA_fasta is not None):
             if (not isinstance(ssRNA_fasta,InMemoryUploadedFile) and not isinstance(ssRNA_fasta, TemporaryUploadedFile)):
                 raise SsRnaNotProvidedException() 

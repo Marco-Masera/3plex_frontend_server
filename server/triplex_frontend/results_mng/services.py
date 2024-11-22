@@ -189,7 +189,8 @@ class ResultsMngServices:
 
         conn.commit()
         with gzip.open(data.stability.path, mode='rt') as stability:
-            for line_ in stability.readlines()[1:]:
+            next(stability) #Skip header
+            for line_ in stability:
                 line = line_.split("\t")
                 tfo_start = int(line[1])
                 tfo_end = int(line[2])
@@ -237,7 +238,8 @@ class ResultsMngServices:
                     dsDNA_b INTEGER, dsDNA_e INTEGER, stability_best REAL,
                     stability_norm REAL, score_best REAL)''')
 
-            for line in summary_file.readlines()[1:]:
+            next(summary_file) #Skip header
+            for line in summary_file:
                 line = line.split("\t")
                 seqId = line[0].split(":")#not in db
                 coords = seqId[3].split("-")#not in db

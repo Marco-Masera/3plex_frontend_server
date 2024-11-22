@@ -16,6 +16,24 @@ class SsRnaNotProvidedException(TriplexException):
             message="You need to provide either a ssRNA fasta file as 'SSRNA_FASTA' or an Id as 'SSRNA_ID'",
             errorCode= status.HTTP_400_BAD_REQUEST)
 
+class SsRnaNoIntestation(TriplexException):
+    def handle(self):
+        return Responses.generic_failure(
+            message="Your ssRNA file does not contain an intestation. It must start with: '>NAME'",
+            errorCode= status.HTTP_400_BAD_REQUEST)
+
+class SsRnaInvalidSequence(TriplexException):
+    def handle(self):
+        return Responses.generic_failure(
+            message="Your ssRNA file contains unrecognized symbols. Only symbols allowed are G, C, T, A.",
+            errorCode= status.HTTP_400_BAD_REQUEST)
+
+class SsRnaMultiline(TriplexException):
+    def handle(self):
+        return Responses.generic_failure(
+            message="The ssRNA.fa file must contain 2 lines: one for intestation, one with the sequence.",
+            errorCode= status.HTTP_400_BAD_REQUEST)
+
 class SsRnaIdNotValidException(TriplexException):
     def handle(self):
         return Responses.generic_failure(
