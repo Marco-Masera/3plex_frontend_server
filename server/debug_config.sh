@@ -31,7 +31,7 @@ export CLEANUP_AFTER_HOURS=168
 export EMAIL_USE_TLS=1
 export EMAIL_HOST="smtp.gmail.com"
 export EMAIL_HOST_USER="3plex.service@gmail.com" 
-export EMAIL_HOST_PASSWORD="fujkmmbadequheof"  #  'Pippo123'
+export EMAIL_HOST_PASSWORD="fujkmmbadequheof" 
 export EMAIL_PORT=587
 
 #Admin
