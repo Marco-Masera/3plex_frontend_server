@@ -22,6 +22,12 @@ class SsRnaNoIntestation(TriplexException):
             message="Your ssRNA file does not contain an intestation. It must start with: '>NAME'",
             errorCode= status.HTTP_400_BAD_REQUEST)
 
+class BedFileMalformed(TriplexException):
+    def handle(self):
+        return Responses.generic_failure(
+            message="The provided dsDNA file does not follow the bed format conventions. Make sure the file is in the correct format.",
+            errorCode= status.HTTP_400_BAD_REQUEST)
+
 class SsRnaInvalidSequence(TriplexException):
     def handle(self):
         return Responses.generic_failure(

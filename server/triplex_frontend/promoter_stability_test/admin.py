@@ -5,3 +5,6 @@ from .models import *
 @admin.register(StabilityTestJobData)
 class StabilityTestJobDataAdmin(admin.ModelAdmin):
     readonly_fields = ("ssRNA_id",)
+    list_filter = ('state','date','species')
+    search_fields = ('state','date','species')
+    ordering = ('-date',)
