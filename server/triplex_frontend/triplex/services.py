@@ -286,6 +286,16 @@ class TriplexService:
             ssRNA_fasta = TriplexService.adjust_ssRNA_header(ssRNA_fasta)
         return ssRNA_fasta
     
+    def validate_bed(bed_file):
+        bed_line_regex = r'^\s*([^\t]+)\t(\d+)\t(\d+)(?:\t.*)?$'
+        for line in bed_file:
+            #InMemoryUploadedFile can come in 2 encodings: text or binary. They need to be managed differently
+            if not (type(line)==str):
+                line = line.decode()
+            if not re.match(bed_line_regex, line):
+                return False
+        return True
+
     def validate_and_rename_dsDNA(dsDNA_fasta, dsDNA_bed, species):
         file_to_return = None
         if (dsDNA_fasta is not None):
@@ -296,12 +306,14 @@ class TriplexService:
             dsDNA_fasta.name = settings.DSDNA_BASE_NAME
             file_to_return = dsDNA_fasta
         if (dsDNA_bed is not None):
+            if (species is None):
+                raise SpeciesNotProvidedException()
             if (not isinstance(dsDNA_bed,InMemoryUploadedFile) and not isinstance(dsDNA_bed, TemporaryUploadedFile)):
                 raise DsDnaNotProvidedException()
             if (dsDNA_bed.size > settings.DSDNA_MAX_SIZE):
                 raise InputFileTooBig(f"Your dsDNA bed file exceed our limit of {settings.DSDNA_MAX_SIZE} bytes")
+            if (not TriplexService.validate_bed(dsDNA_bed)):
+                raise BedFileMalformed()
             dsDNA_bed.name = settings.DSDNA_BED_BASE_NAME
-            if (species is None):
-                raise SpeciesNotProvidedException()
             file_to_return = dsDNA_bed
         return file_to_return 
