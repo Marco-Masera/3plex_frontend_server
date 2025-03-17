@@ -61,13 +61,25 @@ class TokenQueueService:
         else:
             message = f"Hi.\nYour job with token {token.token}, sent on {token.submission_date_formatted}, is completed."
         message = message + f"\nYou can check it at: {settings.CLIENT_URL}checkjob/token/{token.token}"
-        send_mail(
-            "3plex: your job is completed",
-            message,
-            settings.EMAIL_HOST_USER,
-            [token.email_address],
-            fail_silently=False,
-        )
+        try:
+            send_mail(
+                "3plex: your job is completed",
+                message,
+                settings.EMAIL_HOST_USER,
+                [token.email_address],
+                fail_silently=False,
+            )
+        except Exception as e:
+            try:
+                send_mail(
+                    "3plex, problem with mail",
+                    f"Original msg:\n{message} - receiver: {token.email_address}",
+                    settings.EMAIL_HOST_USER,
+                    [marco.masera@unito.it],
+                    fail_silently=False,
+                )
+            except Exception as e:
+                pass
     
     def notify_user_email_job_failed(token: Token):
         if (token.email_address is None):

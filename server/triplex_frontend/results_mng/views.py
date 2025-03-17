@@ -60,7 +60,7 @@ class SubmitResult(APIView):
             ResultsMngServices.receive_data(job, stability, summary, profile, secondary_struct, profile_random)
             TokenQueueService.notify_all_users_email_job_completed(job)
             ResultsMngServices.update_data_last_date(job)
-            
+        
         except TriplexException as e:
             if (job is not None):
                 ResultsMngServices.set_job_failed(job)  
