@@ -41,7 +41,6 @@ class TokenQueueService:
         Token.objects.filter(token=token).delete()
 
     def get_tokens_by_job(job):
-        #TODO compatibility with other types of jobs
         if (isinstance(job, JobData)):
             return Token.objects.filter(standard_job=job)
         if (isinstance(job, StabilityTestJobData)):
@@ -57,13 +56,17 @@ class TokenQueueService:
         if (token.email_address is None):
             return
         if (token.job_name is not None):
-            message = f"Hi.\nYour job with token {token.token} and name {token.job_name}, sent on {token.submission_date_formatted}, is completed."
+            message = f"3plex Web: your Job named {token.job_name} is completed.\n\n"
         else:
-            message = f"Hi.\nYour job with token {token.token}, sent on {token.submission_date_formatted}, is completed."
-        message = message + f"\nYou can check it at: {settings.CLIENT_URL}checkjob/token/{token.token}"
+            message = f"3plex Web: your anonymous Job is completed.\n\n"
+        message += f"Job details:\nToken: {token.token}\n"
+        message += f"Submission date: {token.submission_date_formatted}\n"
+        message += f"\nAccess your job's results: {settings.CLIENT_URL}checkjob/token/{token.token}\n\n"
+        message += "You are receiving this email because you set this email address during job submission. "
+        message += "If you did not use 3plex Web please ignore this email. You will not receive other mails related to this job."
         try:
             send_mail(
-                "3plex: your job is completed",
+                "3plex: job completed",
                 message,
                 settings.EMAIL_HOST_USER,
                 [token.email_address],
@@ -85,12 +88,17 @@ class TokenQueueService:
         if (token.email_address is None):
             return
         if (token.job_name is not None):
-            message = f"Hi.\nYour job with token {token.token} and name {token.job_name}, sent on {token.submission_date_formatted}, has failed."
+            message = f"3plex Web: your Job named {token.job_name} has failed to complete.\n\n"
         else:
-            message = f"Hi.\nYour job with token {token.token}, sent on {token.submission_date_formatted}, has failed."
-        message = message + f"\nYou can check it at: {settings.CLIENT_URL}checkjob/token/{token.token}"
+            message = f"3plex Web: your anonymous Job has failed to complete.\n\n"
+        message += f"Job details:\nToken: {token.token}\n"
+        message += f"Submission date: {token.submission_date_formatted}\n"
+        message += "More details about the reson for failure can be found in the Job's logs.\n"
+        message += f"\nAccess your job's details: {settings.CLIENT_URL}checkjob/token/{token.token}\n\n" 
+        message += "You are receiving this email because you set this email address during job submission. "
+        message += "If you did not use 3plex Web please ignore this email. You will not receive other mails related to this job."
         send_mail(
-            "3plex: your job failed",
+            "3plex: job failed",
             message,
             settings.EMAIL_HOST_USER,
             [token.email_address],

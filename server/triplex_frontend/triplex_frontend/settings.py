@@ -64,6 +64,7 @@ MAX_TEMP_FILES = 5
 MEDIA_ROOT = getenv("MEDIA_ROOT")
 MEDIA_URL = getenv("MEDIA_URL")
 CLIENT_URL = getenv("CLIENT_URL")
+TEMP_UPLOAD_DIR = path.join(MEDIA_ROOT, "temp")
 MEDIA_ROOT_ABS_PATH = path.join(path.abspath(path.dirname(__name__)), MEDIA_ROOT)
 #Cleanup service
 RUN_CLEANUP_EVERY_HOURS = int(getenv("RUN_CLEANUP_EVERY_HOURS"))

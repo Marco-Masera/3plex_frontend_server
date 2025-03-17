@@ -8,6 +8,9 @@ import hmac
 from triplex_frontend.triplex_exceptions import *
 from results_mng.models import GeneInDnaTargetSite
 import re
+import uuid
+from django.core.files import File
+from pathlib import Path
 
 #Input body as key-value form-data with keys:
 SSRNA_FASTA = "SSRNA_FASTA" #Fasta file as ssRNA input
@@ -168,13 +171,44 @@ class TriplexService:
         ssRNA_fasta = InMemoryUploadedFile(new_file,'file',"ssRNA.fa",None,new_file.tell(),None)
         return ssRNA_fasta
 
+    def read_temp_file(file_id):
+        filename = str(file_id)
+        upload_dir = os.path.join(settings.TEMP_UPLOAD_DIR, filename)
+        final_filename = os.path.join(upload_dir, "FINAL")
+        final_path = os.path.join(settings.TEMP_UPLOAD_DIR, final_filename)
+        if not TriplexService.validate_temp_dir(final_path):
+            raise Exception()
+        total_chunks = len(os.listdir(upload_dir))
+        with open(final_path, 'wb') as outfile:
+            for i in range(total_chunks):
+                chunk_path = os.path.join(upload_dir, f"chunk_{i}")
+                with open(chunk_path, 'rb') as infile:
+                    outfile.write(infile.read())
+        opened_file = open(final_path, 'rb')
+        file = File(opened_file)
+        # Clean up temporary directory
+        for i in range(total_chunks):
+            chunk_path = os.path.join(upload_dir, f"chunk_{i}")
+            if os.path.exists(chunk_path):
+                os.remove(chunk_path)
+        return file
+
+    def validate_temp_dir(path):
+        resolved_path = Path(path).resolve()
+        if not str(resolved_path).startswith(settings.TEMP_UPLOAD_DIR):
+            return False
+        return True
+
     def parse_request_params_normal_job(request):
         #Check ssRNA:
         ssRNA_fasta = None; dsDNA_fasta = None; dsDNA_bed = None; dsDNA_precomputed = None
+        ssRNA_temp_id = None; dsDNA_temp_id = None
         species = None; ssRNA_id = None; email=None; jobName = None
+        remove_temp = []
 
         if (SSRNA_FASTA in request.data):
-            ssRNA_fasta = request.data[SSRNA_FASTA]
+            remove_temp.append(request.data[SSRNA_FASTA])
+            ssRNA_fasta = TriplexService.read_temp_file(request.data[SSRNA_FASTA])
         elif (SSRNA_STRING in request.data):
             if (len(request.data[SSRNA_STRING]) > settings.SSRNA_MAX_SIZE):
                 raise InputFileTooBig(f"Your ssRNA string file exceed our limit of {settings.SSRNA_MAX_SIZE} characters")
@@ -187,10 +221,12 @@ class TriplexService:
             raise SsRnaNotProvidedException()
         #Check dsDNA:
         if (DSDNA_FASTA in request.data):
-            dsDNA_fasta = request.data[DSDNA_FASTA]
+            remove_temp.append(request.data[DSDNA_FASTA])
+            dsDNA_fasta = TriplexService.read_temp_file(request.data[DSDNA_FASTA]) 
         elif (DSDNA_COORD_BED in request.data):
             #Uses bed file
-            dsDNA_bed = request.data[DSDNA_COORD_BED]
+            remove_temp.append(request.data[DSDNA_COORD_BED])
+            dsDNA_bed = TriplexService.read_temp_file(request.data[DSDNA_COORD_BED])
         elif (DSDNA_TARGET_NAME in request.data):
             dsDNA_precomputed = request.data[DSDNA_TARGET_NAME]
         else:
@@ -198,8 +234,6 @@ class TriplexService:
         #Check randomization
         if (USE_RAND in request.data):
             use_randomization = request.data[USE_RAND]
-            print(use_randomization)
-            print(settings.ALLOWED_RANDOMIZATION_ITERATIONS)
             if (not int(use_randomization) in settings.ALLOWED_RANDOMIZATION_ITERATIONS):
                 raise NumIterationsNotAllowed()
         else:
@@ -218,15 +252,17 @@ class TriplexService:
             if (not (species,species) in  settings.ALLOWED_SPECIES):
                 raise SpeciesNotSupportedException()
         
-        return ssRNA_fasta, dsDNA_fasta, dsDNA_bed, dsDNA_precomputed, species, ssRNA_id, email, jobName, use_randomization
+        return ssRNA_fasta, dsDNA_fasta, dsDNA_bed, dsDNA_precomputed, species, ssRNA_id, email, jobName, use_randomization, remove_temp
 
     def parse_request_params_promoter_stability_test(request):
         #Check ssRNA:
         ssRNA_fasta = None
         species = None; ssRNA_id = None; email=None; jobName = None
+        remove_temp = []
 
         if (SSRNA_FASTA in request.data):
-            ssRNA_fasta = request.data[SSRNA_FASTA]
+            remove_temp.append(request.data[SSRNA_FASTA])
+            ssRNA_fasta = TriplexService.read_temp_file(request.data[SSRNA_FASTA])
         elif (SSRNA_STRING in request.data):
             if (len(request.data[SSRNA_STRING]) > settings.SSRNA_MAX_SIZE):
                 raise InputFileTooBig(f"Your ssRNA string file exceed our limit of {settings.SSRNA_MAX_SIZE} characters")
@@ -259,7 +295,7 @@ class TriplexService:
             if (not (species,species) in  settings.ALLOWED_SPECIES):
                 raise SpeciesNotSupportedException()
         
-        return ssRNA_fasta, all_genes, interest_genes, species, ssRNA_id, email, jobName
+        return ssRNA_fasta, all_genes, interest_genes, species, ssRNA_id, email, jobName, remove_temp
 
 
     def validate_genes_for_promoter_stability_test(all_genes, interest_genes):
@@ -276,8 +312,8 @@ class TriplexService:
     def validate_and_rename_ssRNA_fasta(ssRNA_fasta):
         print("Validating")
         if (ssRNA_fasta is not None):
-            if (not isinstance(ssRNA_fasta,InMemoryUploadedFile) and not isinstance(ssRNA_fasta, TemporaryUploadedFile)):
-                raise SsRnaNotProvidedException() 
+            #if (not isinstance(ssRNA_fasta,InMemoryUploadedFile) and not isinstance(ssRNA_fasta, TemporaryUploadedFile)):
+            #    raise SsRnaNotProvidedException() 
             if (ssRNA_fasta.size > settings.SSRNA_MAX_SIZE):
                 raise InputFileTooBig(f"Your ssRNA fasta file exceed our limit of {settings.SSRNA_MAX_SIZE} bytes")
             #rename input files
@@ -286,22 +322,34 @@ class TriplexService:
             ssRNA_fasta = TriplexService.adjust_ssRNA_header(ssRNA_fasta)
         return ssRNA_fasta
     
+    def validate_bed(bed_file):
+        bed_line_regex = r'^\s*([^\t]+)\t(\d+)\t(\d+)(?:\t.*)?$'
+        for line in bed_file:
+            #InMemoryUploadedFile can come in 2 encodings: text or binary. They need to be managed differently
+            if not (type(line)==str):
+                line = line.decode()
+            if not re.match(bed_line_regex, line):
+                return False
+        return True
+
     def validate_and_rename_dsDNA(dsDNA_fasta, dsDNA_bed, species):
         file_to_return = None
         if (dsDNA_fasta is not None):
-            if (not isinstance(dsDNA_fasta,InMemoryUploadedFile) and not isinstance(dsDNA_fasta, TemporaryUploadedFile)):
-                raise DsDnaNotProvidedException()
+            #if (not isinstance(dsDNA_fasta,InMemoryUploadedFile) and not isinstance(dsDNA_fasta, TemporaryUploadedFile)):
+            #    raise DsDnaNotProvidedException()
             if (dsDNA_fasta.size > settings.DSDNA_MAX_SIZE):
                 raise InputFileTooBig(f"Your dsDNA fasta file exceed our limit of {settings.DSDNA_MAX_SIZE} bytes")
             dsDNA_fasta.name = settings.DSDNA_BASE_NAME
             file_to_return = dsDNA_fasta
         if (dsDNA_bed is not None):
-            if (not isinstance(dsDNA_bed,InMemoryUploadedFile) and not isinstance(dsDNA_bed, TemporaryUploadedFile)):
-                raise DsDnaNotProvidedException()
-            if (dsDNA_bed.size > settings.DSDNA_MAX_SIZE):
-                raise InputFileTooBig(f"Your dsDNA bed file exceed our limit of {settings.DSDNA_MAX_SIZE} bytes")
-            dsDNA_bed.name = settings.DSDNA_BED_BASE_NAME
             if (species is None):
                 raise SpeciesNotProvidedException()
+            #if (not isinstance(dsDNA_bed,InMemoryUploadedFile) and not isinstance(dsDNA_bed, TemporaryUploadedFile)):
+            #    raise DsDnaNotProvidedException()
+            if (dsDNA_bed.size > settings.DSDNA_MAX_SIZE):
+                raise InputFileTooBig(f"Your dsDNA bed file exceed our limit of {settings.DSDNA_MAX_SIZE} bytes")
+            if (not TriplexService.validate_bed(dsDNA_bed)):
+                raise BedFileMalformed()
+            dsDNA_bed.name = settings.DSDNA_BED_BASE_NAME
             file_to_return = dsDNA_bed
         return file_to_return 
