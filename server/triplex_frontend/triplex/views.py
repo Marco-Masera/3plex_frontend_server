@@ -17,11 +17,46 @@ from rest_framework.authentication import SessionAuthentication, BasicAuthentica
 from visualization.visualization_utils import VisualizationUtils
 from promoter_stability_test.services import PromoterStabilityTestServices
 from django.core.files.storage import FileSystemStorage
+import os
+import shutil
+
+TEMP_UPLOAD_DIR = settings.TEMP_UPLOAD_DIR
+
+def remove_temp_files(temp):
+    print(temp)
+    for file_id in temp:
+        path = os.path.join(settings.TEMP_UPLOAD_DIR, str(file_id))
+        if os.path.exists(path) and os.path.isdir(path): shutil.rmtree(path)
 
 class CsrfExemptSessionAuthentication(SessionAuthentication):
 
     def enforce_csrf(self, request):
         return  # To not perform the csrf check previously happening
+
+class SubmitFileController(APIView):
+    parser_classes = [parsers.MultiPartParser] 
+    authentication_classes = (CsrfExemptSessionAuthentication, BasicAuthentication)
+    def post(self, request, *args, **kwargs):
+        unique_file_id = request.POST.get('upload_id')
+        chunk_index = int(request.POST.get('chunk_index'))
+        total_chunks = int(request.POST.get('total_chunks'))
+        
+        # Create directory for this upload if it doesn't exist
+        upload_dir = os.path.join(TEMP_UPLOAD_DIR, unique_file_id)
+        if not TriplexService.validate_temp_dir(upload_dir):
+            raise Exception()
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        # Save the chunk
+        chunk_path = os.path.join(upload_dir, f"chunk_{chunk_index}")
+        with open(chunk_path, 'wb+') as destination:
+            for chunk in request.FILES['file'].chunks():
+                destination.write(chunk)
+        
+        return Response({
+            'status': 'success',
+            'message': f'Chunk {chunk_index + 1} of {total_chunks} received'
+        })
 
 class SubmitjobController(APIView):
     parser_classes = [parsers.MultiPartParser] 
@@ -30,7 +65,7 @@ class SubmitjobController(APIView):
         tokenObject = None; jobData = None;
         try:
             #Parse request parameters
-            ssRNA_fasta, dsDNA_fasta, dsDNA_bed, dsDNA_precomputed, species, ssRNA_id, email, jobName, use_randomization = TriplexService.parse_request_params_normal_job(request)
+            ssRNA_fasta, dsDNA_fasta, dsDNA_bed, dsDNA_precomputed, species, ssRNA_id, email, jobName, use_randomization, remove_temp = TriplexService.parse_request_params_normal_job(request)
             #Validate and rename ssRNA_fasta
             ssRNA_fasta = TriplexService.validate_and_rename_ssRNA_fasta(ssRNA_fasta)
             #Validate and rename dsDNA file(s)
@@ -57,8 +92,10 @@ class SubmitjobController(APIView):
                 TriplexService.submit_job(ssRNA_fasta, dsDNA_file, dsDNA_precomputed, tokenObject.token, triplex_params, species, use_randomization, is_bed=is_bed_dsDNA)
             elif (tokenObject.state == "Ready"):
                 TokenQueueService.notify_user_email_job_completed(tokenObject)
+            remove_temp_files(remove_temp)
             return Responses.success({"token": tokenObject})
         except TriplexException as e:
+            remove_temp_files(remove_temp)
             if (tokenObject is not None):
                 tokenObject.delete()
             if (jobData is not None):
@@ -68,6 +105,7 @@ class SubmitjobController(APIView):
                     pass
             return e.handle()
         except Exception as e:
+            remove_temp_files(remove_temp)
             if (tokenObject is not None):
                 tokenObject.delete()
             if (jobData is not None):
@@ -85,7 +123,7 @@ class SubmitjobPromoterStabilityTestController(APIView):
         try:
             token_object = None; data_object = None
             #Parse request parameters
-            ssRNA_fasta, all_genes, interest_genes, species, ssRNA_id, email, jobName = TriplexService.parse_request_params_promoter_stability_test(request)
+            ssRNA_fasta, all_genes, interest_genes, species, ssRNA_id, email, jobName, remove_temp = TriplexService.parse_request_params_promoter_stability_test(request)
             #Validate and rename ssRNA_fasta
             ssRNA_fasta = TriplexService.validate_and_rename_ssRNA_fasta(ssRNA_fasta)
             #Validate genes
@@ -107,13 +145,17 @@ class SubmitjobPromoterStabilityTestController(APIView):
             #2- Send request to backend server
             TriplexService.submit_promoter_stability_test_job(token_object.token, interest_genes, all_genes, ssRNA_fasta, triplex_params, species)
             PromoterStabilityTestServices.set_job_submitted(data_object)
+            remove_temp_files(remove_temp)
             return Responses.success({"token": token_object})
         except TriplexException as e:
+            remove_temp_files(remove_temp)
             if (token_object is not None):
                 token_object.delete()
             if (data_object is not None):
                 data_object.delete()
             return e.handle()
+        except Exception as e:
+            remove_temp_files(remove_temp)
 
 class JobMailController(APIView):
     authentication_classes = (CsrfExemptSessionAuthentication, BasicAuthentication)

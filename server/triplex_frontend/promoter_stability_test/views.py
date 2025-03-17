@@ -72,6 +72,7 @@ class SubmitResult(APIView):
     STABILITY_NORM_FGSEA_RES, STABILITY_NORM_LEADING_EDGE, STABILITY_NORM_ENRICHMENT_PLOT,
     STABILITY_NORM_STABILITY_COMP_BOXPLOT, STABILITY_NORM_STABILITY_COMP)
             PromoterStabilityTestServices.update_data_last_date(job)
+            print("Signaling")
             TokenQueueService.notify_all_users_email_job_completed(job)
             
         except TriplexException as e:

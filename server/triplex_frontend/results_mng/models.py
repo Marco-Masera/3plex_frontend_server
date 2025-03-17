@@ -226,7 +226,7 @@ class JobData(models.Model):
 
 class JobUCSCTrack(models.Model):
     job = models.ForeignKey(JobData, on_delete=models.CASCADE)
-    file = models.FileField()
+    file = models.FileField(max_length=1024)
     dsDNA_id = models.CharField(max_length=64, blank=False)
     stability = models.CharField(max_length=32, blank=False)
 
