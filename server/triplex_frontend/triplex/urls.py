@@ -3,6 +3,7 @@ from .views import *
 
 
 urlpatterns = [
+    path('upload_file_part/', SubmitFileController.as_view()),
     path('submitjob/', SubmitjobController.as_view()),
     path('submit_promoter_test/', SubmitjobPromoterStabilityTestController.as_view()),
     path('jobs/<str:token>/mail/<str:mail>', JobMailController.as_view()),
