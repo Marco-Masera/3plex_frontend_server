@@ -23,7 +23,6 @@ import shutil
 TEMP_UPLOAD_DIR = settings.TEMP_UPLOAD_DIR
 
 def remove_temp_files(temp):
-    print(temp)
     for file_id in temp:
         path = os.path.join(settings.TEMP_UPLOAD_DIR, str(file_id))
         if os.path.exists(path) and os.path.isdir(path): shutil.rmtree(path)
@@ -63,6 +62,7 @@ class SubmitjobController(APIView):
     authentication_classes = (CsrfExemptSessionAuthentication, BasicAuthentication)
     def post(self, request, *args, **kwargs):
         tokenObject = None; jobData = None;
+        remove_temp = []
         try:
             #Parse request parameters
             ssRNA_fasta, dsDNA_fasta, dsDNA_bed, dsDNA_precomputed, species, ssRNA_id, email, jobName, use_randomization, remove_temp = TriplexService.parse_request_params_normal_job(request)
@@ -120,6 +120,7 @@ class SubmitjobPromoterStabilityTestController(APIView):
     authentication_classes = (CsrfExemptSessionAuthentication, BasicAuthentication)
     def post(self, request, *args, **kwargs):
         tokenObject = None; jobData = None;
+        remove_temp = []
         try:
             token_object = None; data_object = None
             #Parse request parameters
@@ -155,7 +156,12 @@ class SubmitjobPromoterStabilityTestController(APIView):
                 data_object.delete()
             return e.handle()
         except Exception as e:
+            if (token_object is not None):
+                token_object.delete()
+            if (data_object is not None):
+                data_object.delete()
             remove_temp_files(remove_temp)
+            raise e
 
 class JobMailController(APIView):
     authentication_classes = (CsrfExemptSessionAuthentication, BasicAuthentication)
