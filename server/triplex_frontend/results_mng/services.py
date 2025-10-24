@@ -86,8 +86,13 @@ class ResultsMngServices:
         data.secondary_structure.name = f"jobs/{data.base_path}/{data.secondary_structure.name}"
         data.save()
         #Need to index tpx.stability
-        stability_indexed = ResultsMngServices.build_stabilty_indexed(data)
-        data.stability_indexed.name = stability_indexed
+        stability_size = os.path.getsize(data.stability.path)
+        if (stability_size < 500000000):  # 500 MB
+            stability_indexed = ResultsMngServices.build_stabilty_indexed(data)
+            data.stability_indexed.name = stability_indexed
+        else:
+            #If the file is too big, we do not index it
+            data.stability_indexed = None
         #Set state Ready
         data.state = "Ready"
         data.save()

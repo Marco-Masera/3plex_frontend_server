@@ -144,29 +144,93 @@ class TriplexService:
             'SSTRAND': data.get('SSTRAND', default_triplex_params['SSTRAND'])
         }
 
-    def adjust_ssRNA_header(ssRNA:InMemoryUploadedFile):
+    def validate_dsDNA_fasta(dsDNA_fasta: InMemoryUploadedFile):
+        headers = set()
+        def validate_header(string):
+            name = string.split()[0][1:]
+            if (name in headers):
+                raise dsDNAGenericError("dsDNA file appears to have repeating headers.")
+            headers.add(name)
+            if (not re.match(r'^>[^ \t\r\n]+.*$', string)):
+                raise dsDNAGenericError("dsDNA file must be in FASTA format. The header line must start with '>' and contain a name.")
+
+        def validate_sequence(data):
+            if (not re.match(r'^[ACGTN]*$', data)):
+                if (re.match(r'^[ACGTRYKMSWBHDVN-]+$', data)):
+                    raise dsDNAGenericError("dsDNA file must be in FASTA format with nucleotide sequences symbols: A C G T, plus N. It appears the input FASTA contains ambigiuity codes.")
+                if (re.match(r'^[ACDEFGHIKLMNPQRSTVWYBZX\*\-]+$', data)):
+                    raise dsDNAGenericError("dsDNA file must be in FASTA format with nucleotide sequences symbols: A C G T, plus N. It appears the input FASTA contains protein sequences.")
+                raise dsDNAGenericError("dsDNA file must be in FASTA format with nucleotide sequences symbols: A C G T, plus N. It appears the input FASTA contains unrecognized symbols.")
+            
+
+        first_line = dsDNA_fasta.readline()
+        #InMemoryUploadedFile can come in 2 encodings: text or binary. They need to be managed differently
+        isBinary = False
+        if (not type(first_line)==str):
+            isBinary = True
+            first_line = first_line.decode()
+        #Validate first line:
+        validate_header(first_line)
+        numLines = 0
+        
+        while True:
+            data = dsDNA_fasta.readline(65536)
+            if not data:
+                if (numLines == 0):
+                    raise dsDNAGenericError("dsDNA file appears to have a header but no sequence.")
+                break
+            if (isBinary):
+                data = data.decode()
+            numLines += 1
+            data = data.strip()
+            if (">" in data):
+                validate_header(data)
+            else:
+                data = data.upper()
+                data = data.replace("U", "T")
+                validate_sequence(data)
+        if (numLines % 2 != 1):
+            raise dsDNAGenericError("dsDNA file appears to have an odd number of lines. Muulti-Fasta format requires sequence of two lines: one for the header and one for the sequence.")
+
+    def adjust_ssRNA_header_and_validate(ssRNA:InMemoryUploadedFile):
         first_line = ssRNA.readline()
         new_file = StringIO()
         #InMemoryUploadedFile can come in 2 encodings: text or binary. They need to be managed differently
-        if (type(first_line)==str):
-            if (not first_line.startswith(">")):
-                ssRNA.seek(0)
-            new_file.write(f">{settings.SSRNA_HEADER }\n")
-            while True:
-                data = ssRNA.read(65536)
-                if not data:
-                    break
-                new_file.write(data)
-        else:
+        isBinary = False
+        if (not type(first_line)==str):
+            isBinary = True
             first_line = first_line.decode()
-            if (not first_line.startswith(">")):
-                ssRNA.seek(0)
-            new_file.write(f">{settings.SSRNA_HEADER }\n")
-            while True:
-                data = ssRNA.read(65536).decode()
-                if not data:
-                    break
-                new_file.write(data)
+        #Validate first line:
+        if (not first_line.startswith(">")):
+            raise SsRnaNoIntestation()
+        new_file.write(f">{settings.SSRNA_HEADER }\n")
+        numLines = 0
+        
+        while True:
+            data = ssRNA.read(65536)
+            if not data:
+                if (numLines == 0):
+                    raise ssRNAGenericError("ssRNA file appears to have a header but no sequence. Fasta format requires two lines: one for the header and one for the sequence.")
+                break
+            if (isBinary):
+                data = data.decode()
+            numLines += 1
+            data = data.strip()
+            if (">" in data):
+                raise ssRNAGenericError("ssRNA file appears to have multiple headers. The ssRNA must be in FASTA format, not MULTI-FASTA.")
+            if ("\n" in data):
+                position = data.index("\n")
+                raise ssRNAGenericError("ssRNA file appears to have multiple lines. Fasta format requires two lines: one for the header and one for the sequence.")
+            data = data.upper()
+            data = data.replace("U", "T")
+            if (not re.match(r'^[ACGTN]*$', data)):
+                if (re.match(r'^[ACGTRYKMSWBHDVN-]+$', data)):
+                    raise ssRNAGenericError("ssRNA file must be in FASTA format with nucleotide sequences symbols: A C G T, plus N. It appears the input FASTA contains ambigiuity codes.")
+                if (re.match(r'^[ACDEFGHIKLMNPQRSTVWYBZX\*\-]+$', data)):
+                    raise ssRNAGenericError("ssRNA file must be in FASTA format with nucleotide sequences symbols: A C G T, plus N. It appears the input FASTA contains protein sequences.")
+                raise ssRNAGenericError("ssRNA file must be in FASTA format with nucleotide sequences symbols: A C G T, plus N. It appears the input FASTA contains unrecognized symbols.")
+            new_file.write(data)
+
         new_file.seek(0)
         ssRNA_fasta = InMemoryUploadedFile(new_file,'file',"ssRNA.fa",None,new_file.tell(),None)
         return ssRNA_fasta
@@ -319,7 +383,7 @@ class TriplexService:
             #rename input files
             ssRNA_fasta.name = settings.SSRNA_BASE_NAME 
             #Adjust header of ssRNA
-            ssRNA_fasta = TriplexService.adjust_ssRNA_header(ssRNA_fasta)
+            ssRNA_fasta = TriplexService.adjust_ssRNA_header_and_validate(ssRNA_fasta)
         return ssRNA_fasta
     
     def validate_bed(bed_file):
@@ -335,12 +399,11 @@ class TriplexService:
     def validate_and_rename_dsDNA(dsDNA_fasta, dsDNA_bed, species):
         file_to_return = None
         if (dsDNA_fasta is not None):
-            #if (not isinstance(dsDNA_fasta,InMemoryUploadedFile) and not isinstance(dsDNA_fasta, TemporaryUploadedFile)):
-            #    raise DsDnaNotProvidedException()
             if (dsDNA_fasta.size > settings.DSDNA_MAX_SIZE):
                 raise InputFileTooBig(f"Your dsDNA fasta file exceed our limit of {settings.DSDNA_MAX_SIZE} bytes")
             dsDNA_fasta.name = settings.DSDNA_BASE_NAME
             file_to_return = dsDNA_fasta
+            TriplexService.validate_dsDNA_fasta(file_to_return)
         if (dsDNA_bed is not None):
             if (species is None):
                 raise SpeciesNotProvidedException()

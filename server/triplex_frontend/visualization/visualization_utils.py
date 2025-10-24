@@ -80,7 +80,7 @@ class VisualizationUtils:
             for idx, col in enumerate(cursor.description):
                 d[col[0]] = row[idx]
             return d
-        if not (os.path.isfile(data.stability_indexed.path)):
+        if not (data.stability_indexed) or not (os.path.isfile(data.stability_indexed.path)):
             return []
         conn = sqlite3.connect(data.stability_indexed.path)
         conn.row_factory = dict_factory
@@ -189,7 +189,7 @@ class VisualizationUtils:
             url = f"http://genome.ucsc.edu/cgi-bin/hgTracks?org={species}&hgt.customText={trace_url}"
             return url
 
-        if not (os.path.isfile(job.stability_indexed.path)):
+        if not (job.stability_indexed) or not (os.path.isfile(job.stability_indexed.path)):
             return []
         #Check if there is a temp file already set
         file = JobUCSCTrack.objects.filter(job=job,dsDNA_id=dsDNA_id,stability=str(min_stability)).first()
@@ -240,7 +240,7 @@ track type=bedGraph name="{trace_name}" description="Number of tpx with stabilit
         return build_url(obj)
     
     def get_profile_dsDNAID(job, dsDNAID):
-        if not (os.path.isfile(job.stability_indexed.path)):
+        if not (job.stability_indexed) or not (os.path.isfile(job.stability_indexed.path)):
             return []
         conn = sqlite3.connect(job.stability_indexed.path)
         cursor = conn.cursor()
@@ -260,7 +260,7 @@ track type=bedGraph name="{trace_name}" description="Number of tpx with stabilit
             for idx, col in enumerate(cursor.description):
                 d[col[0]] = row[idx]
             return d
-        if not (path.isfile(data.stability_indexed.path)):
+        if not (data.stability_indexed) or (not path.isfile(data.stability_indexed.path)):
             return None
         conn = sqlite3.connect(data.stability_indexed.path)
         conn.row_factory = dict_factory

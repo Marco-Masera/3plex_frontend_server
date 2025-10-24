@@ -307,7 +307,10 @@ class WebSummaryController(APIView):
             token_object = TokenQueueService.find_token(kwargs.get("token"))
             token_object.assert_type_standard()
             job = token_object.job
-            return Responses.success(VisualizationUtils.get_web_summary(job))
+            has_stability_indexed = False
+            if (job.stability_indexed) and os.path.isfile(job.stability_indexed.path):
+                has_stability_indexed = True
+            return Responses.success(VisualizationUtils.get_web_summary(job), {'has_stability_indexed': has_stability_indexed})
         except TriplexException as e:
             return e.handle()
 

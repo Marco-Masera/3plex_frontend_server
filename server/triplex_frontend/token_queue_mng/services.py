@@ -62,8 +62,11 @@ class TokenQueueService:
         message += f"Job details:\nToken: {token.token}\n"
         message += f"Submission date: {token.submission_date_formatted}\n"
         message += f"\nAccess your job's results: {settings.CLIENT_URL}checkjob/token/{token.token}\n\n"
-        message += "You are receiving this email because you set this email address during job submission. "
-        message += "If you did not use 3plex Web please ignore this email. You will not receive other mails related to this job."
+        message += "Cite 3plex Web:\n"
+        message += "Masera, Marco & Cicconetti, Chiara & Ferrero, Francesca & Oliviero, Salvatore & Molineris, Ivan. (2025). 3plex Web: An Interactive Platform for RNA:DNA Triplex Prediction and Analysis. 10.48550/arXiv.2504.18076.\n\n"
+        
+        message += "You are receiving this notification because you set this email address during job submission. "
+        message += "If you did not use 3plex Web please ignore this email. You will not receive other emails related to this job."
         try:
             send_mail(
                 "3plex: job completed",

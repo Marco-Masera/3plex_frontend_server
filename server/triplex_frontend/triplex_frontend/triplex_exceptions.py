@@ -18,27 +18,74 @@ class SsRnaNotProvidedException(TriplexException):
 
 class SsRnaNoIntestation(TriplexException):
     def handle(self):
-        return Responses.generic_failure(
-            message="Your ssRNA file does not contain an intestation. It must start with: '>NAME'",
-            errorCode= status.HTTP_400_BAD_REQUEST)
+        return Responses.personalized_failure(
+            {
+                "message":"Your ssRNA file does not contain an intestation. It must start with: '>NAME'",
+                "errorType":"ssRNA_error",
+                "whatsWrong": "ssRNA input must follow fasta format and start with an intestation - es >NAME"
+            },
+            status.HTTP_400_BAD_REQUEST)
+
+class ssRNAGenericError(TriplexException):
+    def __init__(self, message):
+        super().__init__(self)
+        self.message = message 
+
+    def handle(self):
+        return Responses.personalized_failure(
+            {
+                "message":self.message,
+                "errorType":"ssRNA_error",
+                "whatsWrong": self.message
+            },
+            status.HTTP_400_BAD_REQUEST)
+
+
+class dsDNAGenericError(TriplexException):
+    def __init__(self, message):
+        super().__init__(self)
+        self.message = message 
+
+    def handle(self):
+        return Responses.personalized_failure(
+            {
+                "message":self.message,
+                "errorType":"dsDNA_error",
+                "whatsWrong": self.message
+            },
+            status.HTTP_400_BAD_REQUEST)
+
+            
 
 class BedFileMalformed(TriplexException):
     def handle(self):
-        return Responses.generic_failure(
-            message="The provided dsDNA file does not follow the bed format conventions. Make sure the file is in the correct format.",
-            errorCode= status.HTTP_400_BAD_REQUEST)
+        return Responses.personalized_failure(
+            {
+                "message":"The provided dsDNA file does not follow the bed format conventions. Make sure the file is in the correct format.",
+                "errorType":"dsDNA_error",
+                "whatsWrong": "The provided dsDNA file does not follow the bed format conventions. Make sure the file is in the correct format."
+            },
+            status.HTTP_400_BAD_REQUEST)
 
 class SsRnaInvalidSequence(TriplexException):
     def handle(self):
-        return Responses.generic_failure(
-            message="Your ssRNA file contains unrecognized symbols. Only symbols allowed are G, C, T, A.",
-            errorCode= status.HTTP_400_BAD_REQUEST)
+        return Responses.personalized_failure(
+            {
+                "message":"Your ssRNA file contains unrecognized symbols. Only symbols allowed are G, C, T, A.",
+                "errorType":"ssRNA_error",
+                "whatsWrong": "Your ssRNA file contains unrecognized symbols. Only symbols allowed are G, C, T, A."
+            },
+            status.HTTP_400_BAD_REQUEST)
 
 class SsRnaMultiline(TriplexException):
     def handle(self):
-        return Responses.generic_failure(
-            message="The ssRNA.fa file must contain 2 lines: one for intestation, one with the sequence.",
-            errorCode= status.HTTP_400_BAD_REQUEST)
+        return Responses.personalized_failure(
+            {
+                "message":"The ssRNA.fa file must contain 2 lines: one for intestation, one with the sequence.",
+                "errorType":"ssRNA_error",
+                "whatsWrong": "The ssRNA.fa file must contain 2 lines: one for intestation, one with the sequence."
+            },
+            status.HTTP_400_BAD_REQUEST)
 
 class SsRnaIdNotValidException(TriplexException):
     def handle(self):

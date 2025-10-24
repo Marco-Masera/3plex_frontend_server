@@ -24,8 +24,8 @@ class ExtendedEncoder(DjangoJSONEncoder):
         return super().default(o)
 
 class Responses:
-    def success(payload):
-        data = json.dumps({ 'success': True, 'payload': payload }, cls=ExtendedEncoder)
+    def success(payload, extra=None):
+        data = json.dumps({ 'success': True, 'payload': payload, 'extra': extra }, cls=ExtendedEncoder)
         return Response(data)
 
     def success_json(data):

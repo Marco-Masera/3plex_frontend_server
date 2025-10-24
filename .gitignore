@@ -11,3 +11,4 @@ server/triplex_frontend/results_mng/migrations/*
 backup_utils/*
 !backup_utils/run_backup.sh
 !backup_utils/readme.MD
+server/prod_config.sh
