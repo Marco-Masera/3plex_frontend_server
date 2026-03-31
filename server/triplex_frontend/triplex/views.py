@@ -64,6 +64,7 @@ class SubmitjobController(APIView):
         tokenObject = None; jobData = None;
         remove_temp = []
         try:
+            print("Received new job")
             #Parse request parameters
             ssRNA_fasta, dsDNA_fasta, dsDNA_bed, dsDNA_precomputed, species, ssRNA_id, email, jobName, use_randomization, remove_temp = TriplexService.parse_request_params_normal_job(request)
             #Validate and rename ssRNA_fasta
@@ -95,6 +96,7 @@ class SubmitjobController(APIView):
             remove_temp_files(remove_temp)
             return Responses.success({"token": tokenObject})
         except TriplexException as e:
+            print("Error during job submission: " + str(e))
             remove_temp_files(remove_temp)
             if (tokenObject is not None):
                 tokenObject.delete()
@@ -105,6 +107,7 @@ class SubmitjobController(APIView):
                     pass
             return e.handle()
         except Exception as e:
+            print("Unexpected error during job submission: " + str(e))
             remove_temp_files(remove_temp)
             if (tokenObject is not None):
                 tokenObject.delete()
