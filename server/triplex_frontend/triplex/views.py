@@ -96,7 +96,6 @@ class SubmitjobController(APIView):
             remove_temp_files(remove_temp)
             return Responses.success({"token": tokenObject})
         except TriplexException as e:
-            print("Error during job submission: " + str(e))
             remove_temp_files(remove_temp)
             if (tokenObject is not None):
                 tokenObject.delete()

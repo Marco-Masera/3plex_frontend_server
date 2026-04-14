@@ -129,7 +129,7 @@ class TriplexService:
                 print(f"Bad response: {r.content}")
                 raise CannotSubmitToBackendException()
         except Exception as e:
-            print(e)
+            print("Error submitting to pgen22:", e)
             raise CannotSubmitToBackendException()
         
 
