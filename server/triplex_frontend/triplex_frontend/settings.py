@@ -192,3 +192,6 @@ STATIC_URL = getenv("ADMIN_STATIC")
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+print(f"\n\nBACKEND URL: {BACKEND_URL}\n\n")

@@ -2,6 +2,7 @@ from token_queue_mng.models import *
 from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
 from django.conf import settings
 import requests
+import time
 from io import StringIO
 import datetime
 import hmac
@@ -123,13 +124,21 @@ class TriplexService:
             url = f"{url}?{ '&'.join(query_params) }"
         files = {'ssRNA_fasta': ssRNA_fasta, 'dsDNA_fasta': dsDNA_fasta}
         triplex_tuples = [(key, triplex_params[key]) for key in triplex_params.keys()]
-        try:
-            r = requests.post(url, files=files, data=triplex_tuples)
-            if (r.status_code != 200):
-                print(f"Bad response: {r.content}")
-                raise CannotSubmitToBackendException()
-        except Exception as e:
-            print("Error submitting to pgen22:", e)
+        success = False
+        for _ in range(5):
+            try:
+                r = requests.post(url, files=files, data=triplex_tuples)
+                if (r.status_code != 200):
+                    print(f"Bad response from Pgen22: {r.content}")
+                    time.sleep(0.5)
+                    continue
+                else:
+                    success = True
+                    break
+            except Exception as e:
+                print("Error submitting to pgen22:", e)
+                time.sleep(0.5)
+        if (success == False):
             raise CannotSubmitToBackendException()
         
 
